@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# uv / venv
+.venv/
+venv/
+uv.lock
+
+# auth / secretos (NUNCA versionar sesiones de NotebookLM)
+*.env
+.env
+accounts/
+chrome_profile/
+*.sqlite
+*_token*
+cookies*.json
+
+# tests / tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# transporte Android generado (protobuf) — se regenera
+src/notebooklm_hub/core/transport/_proto/
