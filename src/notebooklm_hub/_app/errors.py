@@ -34,9 +34,14 @@ class ClassifiedError:
 
 
 def classify(exc: Exception) -> ClassifiedError:
-    """Mapea una excepción a una categoría neutral. Se amplía al implementar el núcleo."""
+    """Mapea una excepción a una categoría neutral. Único sitio de la decisión de categoría."""
+    from ..core.auth import AuthError
     from ..core.transport.base import TransportError
 
     if isinstance(exc, TransportError):
         return ClassifiedError(Category.TRANSPORT, str(exc), retriable=exc.retriable)
+    if isinstance(exc, AuthError):
+        return ClassifiedError(Category.CONFIG, str(exc))
+    if isinstance(exc, ValueError):
+        return ClassifiedError(Category.CONFIG, str(exc))
     return ClassifiedError(Category.UNKNOWN, str(exc))

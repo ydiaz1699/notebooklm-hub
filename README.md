@@ -62,9 +62,41 @@ Detalle completo: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Estado
 
-🚧 **Fase 0 — fundación.** Ahora mismo el repo contiene el conocimiento destilado, la matriz de
-capacidades y el esqueleto de arquitectura. El motor se construye por fases (ver
-[`docs/ROADMAP.md`](docs/ROADMAP.md)). No es funcional todavía.
+🚧 **Fase 1 — vertical funcional mínima (`ask`).** Ya existe el código real de: transporte web
+(`batchexecute`), auth por cookies, núcleo, la tool `notebook_ask` y las fachadas MCP + REST.
+La lógica, el parseo del protocolo y el cableado de las fachadas están **probados** (suite 14/14 +
+ambas fachadas levantan y exponen la tool).
+
+> ⚠️ **Pendiente de verificación en entorno real.** El transporte habla con endpoints internos de
+> Google que **no se han podido probar contra una cuenta real** desde el entorno de desarrollo
+> (sin salida a Google ni credenciales). El protocolo está portado fielmente de implementaciones de
+> referencia (MIT), pero el **primer run contra NotebookLM debe hacerse con una cuenta dedicada en
+> tu máquina/NAS**. Ver "Primer uso real" abajo.
+
+Siguientes fases (resto de tools, transportes Android gRPC + navegador, CLI, PyPI): ver
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Primer uso real (en tu máquina/NAS, con cuenta dedicada)
+
+```bash
+uv venv && uv pip install -e ".[mcp,rest]"
+
+# Credenciales: cookies de una cuenta DEDICADA ya logueada en NotebookLM.
+#  opción 1: exportar directamente el header Cookie
+export NOTEBOOKLM_HUB_COOKIES="SID=...; HSID=...; SSID=...; ..."
+#  opción 2: archivo JSON [{"name":...,"value":...}] exportado del navegador
+export NOTEBOOKLM_HUB_COOKIE_FILE=~/nlm-cookies.json
+
+# Probar por REST (para n8n/curl):
+nlmhub-rest &            # levanta en 127.0.0.1:9420
+curl -s localhost:9420/tools/notebook_ask \
+  -H 'content-type: application/json' \
+  -d '{"notebook":"<ID o nombre>","question":"¿qué dicen mis fuentes sobre X?"}'
+
+# O por MCP (para Kiro/Claude/Cursor): registrar el comando `nlmhub-mcp` como servidor MCP stdio.
+```
+Si el transporte web falla por un cambio de Google (RPC drift), ver la tabla de mantenimiento en
+[`docs/transport/README.md`](docs/transport/README.md) y el override `NOTEBOOKLM_HUB_RPC_OVERRIDES`.
 
 ## Instalación (prevista)
 

@@ -11,14 +11,16 @@ Construcción por fases. Cada fase deja algo verificable; no se escribe el motor
 
 **Valor:** aunque los repos originales desaparezcan mañana, el *qué* y el *cómo* están aquí.
 
-## Fase 1 — Vertical funcional mínima (validar el patrón)
-Objetivo: una operación de punta a punta por los tres canales.
-- [ ] `core/transport/batchexecute.py` real (empezar por el más rápido) + 1 operación: *preguntar*
-- [ ] `core/auth/` con un método de login (cookies o master-token)
-- [ ] `_app/ask.py` (Request/Plan/Result + build/execute)
-- [ ] `tools/notebook_ask.py` (auto-descubierta)
-- [ ] fachada MCP + fachada REST exponiendo `ask`
-- [ ] test e2e: misma pregunta vía MCP y vía `curl` → misma respuesta
+## ✅ Fase 1 — Vertical funcional mínima (validar el patrón)  ← HECHA (código), pendiente run real
+Objetivo: una operación de punta a punta por MCP y REST.
+- [x] `core/transport/batchexecute.py` real (protocolo portado de roomi/jacob-bd, MIT) + op *ask*
+- [x] `core/auth/` login por cookies (env var o archivo JSON) — apto para servidor/NAS
+- [x] `_app/ask.py` (Request/Result + build/execute, patrón ADR-0021)
+- [x] `tools/notebook_ask.py` (auto-descubierta por el registry)
+- [x] fachada MCP + fachada REST exponiendo `notebook_ask` (ambas levantan y publican la tool)
+- [x] suite 14/14: parsers del protocolo (drift/refusal/respuesta), verbo ask, errores
+- [ ] **PENDIENTE: run real contra una cuenta de NotebookLM** (hacer en el NAS; no verificable
+      desde el sandbox de desarrollo sin salida a Google)
 
 ## Fase 2 — Cascada de transporte completa
 - [ ] `android_grpc.py` (nivel 1) + `browser.py` (nivel 3) tras el contrato `Transport`
