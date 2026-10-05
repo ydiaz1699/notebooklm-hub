@@ -84,15 +84,18 @@ perder el hilo; su hogar natural es `Varios_tools/construir-mcp` + el patrón de
 
 Caso: WinOLS (editor binario de ECU, de EVC). El patrón genérico ya quedó en `mcp-toolbox.md` §8ter.
 
-- **(B) Camino preferido — scripting oficial LUA.** WinOLS tiene un **plugin LUA oficial (OLS530)**.
-  Antes de construir nada hay que **conseguir su documentación real** (qué funciones LUA expone, cómo
-  se invoca desde fuera: archivo / CLI / socket). Con eso, el MCP generaría/ejecutaría LUA — robusto,
-  sin simular clics. **No inventar funciones**: verificar contra la doc del OLS530.
-- **(C) Camino de respaldo — automatización de UI** (si no hay LUA o no se quiere pagar): evaluar
-  **FlaUI-MCP** (UI Automation, lo más robusto para GUI Windows) como base, igual que se evaluaron
-  los 7 proyectos de NotebookLM. Alternativas: uia-x, pywinauto-mcp, AutoIt-mcp; visión+OCR solo
-  como último recurso.
+- **(B) Camino preferido — scripting oficial LUA. ✅ DOC VERIFICADA.** WinOLS tiene el plugin
+  **"External Control"** (LUA). La doc oficial de EVC ya está **leída y destilada** en
+  [`docs/winols-lua-notes.md`](winols-lua-notes.md): cómo arranca (CLI / drag&drop / **modo servidor
+  con "ticket files"** — ideal para un MCP), el inventario real de funciones (`OpenProjectVersion`,
+  `projectExport`, `projectApplyChecksums`, `projectExportMaps`, etc.) y el diseño de tools con
+  destructivas en `ask`. El diseño del MCP está listo; **no hace falta reconseguir doc**.
+- **(C) Camino de respaldo — automatización de UI** (solo si no se tiene el plugin External Control,
+  que es de pago): evaluar **FlaUI-MCP** (UI Automation) como base. Alternativas: uia-x,
+  pywinauto-mcp, AutoIt-mcp; visión+OCR como último recurso.
 - **Avisos:** corre en Windows (no en el NAS); tools que **escriben a la ECU → `ask`** obligatorio
   (un error puede inutilizar la centralita); implicaciones legales de emisiones según país.
-- **Primer paso cuando se retome:** conseguir doc del OLS530 → decidir B vs C → catalogar la base
-  elegida → construir con el patrón FastMCP + permissions del toolbox.
+- **Qué falta para construirlo (realista):** (1) máquina Windows con WinOLS registrado + plugin
+  External Control (de pago); (2) leer en el PDF las firmas exactas de las funciones a usar;
+  (3) decidir transporte LUA↔MCP (modo servidor/ticket recomendado); (4) construir con FastMCP +
+  permissions del toolbox. Hogar: `Varios_tools/construir-mcp`.
