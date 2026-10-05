@@ -99,3 +99,10 @@ Caso: WinOLS (editor binario de ECU, de EVC). El patrón genérico ya quedó en 
   External Control (de pago); (2) leer en el PDF las firmas exactas de las funciones a usar;
   (3) decidir transporte LUA↔MCP (modo servidor/ticket recomendado); (4) construir con FastMCP +
   permissions del toolbox. Hogar: `Varios_tools/construir-mcp`.
+- **✅ YA EXISTE una base: `NXT-Tronic/winols-mcp`** (MIT, Python) implementa este diseño exacto
+  (ticket files + 81 tools + 3 capas de seguridad). Código leído y destilado en
+  [`docs/winols-lua-notes.md`](winols-lua-notes.md) §9. **Plan: forkear/evaluar y probar en Windows
+  real, NO reconstruir.** Alternativa sin pagar el plugin: **ZedSuite** (editor libre que lee `.ols`)
+  + **py-ols** (parsear `.ols` en Python) + **shengjia** (47 skills de dominio ECU/TCU para el LLM).
+- **PENDIENTE (sesión con `Varios_tools`):** fichar los 8 proyectos evaluados (winols-mcp, ZedSuite,
+  LinOLS, py-ols, shengjia, DiffPatchTool/Wpf, mrc-tuner-rom) en `tool_catalog` + `repo-index`.
