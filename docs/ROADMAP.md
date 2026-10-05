@@ -46,3 +46,18 @@ Objetivo: una operación de punta a punta por MCP y REST.
 - [ ] ficha en `Varios_tools/tool_catalog` + fila en `repo-index`
 - [ ] guía de montaje en Kiro CLI del NAS (patrón nextdns/n8n: mcp_tools + permissions.yaml V3)
 - [ ] opcional: tools nativas para el nas-agent (Strands)
+
+---
+
+## 📌 Pendientes de mantenimiento (requieren sesión con `Varios_tools` cargado)
+
+Estos dos quedaron abiertos al construir el repo. No se pueden cerrar desde una sesión que solo
+tenga `notebooklm-hub` cargado (el `select repository` de Kiro Web solo carga lo elegido).
+
+1. **Mover el toolbox a su hogar canónico.** `docs/mcp-toolbox.md` debería vivir en
+   `Varios_tools/construir-mcp/` (junto a `PROYECTO-guia-construir-mcp.md`). Al mover: dejar en
+   `notebooklm-hub` solo un enlace (regla: enlazar, no duplicar).
+2. **Cerrar el círculo en el índice maestro.** Añadir `notebooklm-hub` a `ydiaz1699/repo-index`
+   (fila en INDEX + destilado en `repos/notebooklm-hub.md` + mención en `mcp-catalog`), para que un
+   chat en frío sepa que existe y no proponga crear otro MCP de NotebookLM. Opcional: ficha en
+   `Varios_tools/tool_catalog` reusando `docs/provenance/capabilities-matrix.md` (ya destilado).
