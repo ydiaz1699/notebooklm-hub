@@ -73,3 +73,26 @@ tenga `notebooklm-hub` cargado (el `select repository` de Kiro Web solo carga lo
      `allow`; tools que actúan (`browser_click`, `browser_navigate`, `browser_type`) en `ask`.
    - Nota: para capturar funciones nuevas NO hace falta embeberlo; se usa como MCP aparte desde el
      LLM. Embeber Playwright como librería es solo para el transporte nivel 3 de notebooklm-hub.
+
+---
+
+## 💡 Idea anotada — MCP para automatizar programas de escritorio (p. ej. WinOLS)
+
+**NO es parte de notebooklm-hub** (es otro programa, otro entorno Windows). Se anota aquí para no
+perder el hilo; su hogar natural es `Varios_tools/construir-mcp` + el patrón de `docs/mcp-toolbox.md`
+§8ter. Pendiente para un **chat/proyecto dedicado** cuando el usuario tenga máquina Windows + la doc.
+
+Caso: WinOLS (editor binario de ECU, de EVC). El patrón genérico ya quedó en `mcp-toolbox.md` §8ter.
+
+- **(B) Camino preferido — scripting oficial LUA.** WinOLS tiene un **plugin LUA oficial (OLS530)**.
+  Antes de construir nada hay que **conseguir su documentación real** (qué funciones LUA expone, cómo
+  se invoca desde fuera: archivo / CLI / socket). Con eso, el MCP generaría/ejecutaría LUA — robusto,
+  sin simular clics. **No inventar funciones**: verificar contra la doc del OLS530.
+- **(C) Camino de respaldo — automatización de UI** (si no hay LUA o no se quiere pagar): evaluar
+  **FlaUI-MCP** (UI Automation, lo más robusto para GUI Windows) como base, igual que se evaluaron
+  los 7 proyectos de NotebookLM. Alternativas: uia-x, pywinauto-mcp, AutoIt-mcp; visión+OCR solo
+  como último recurso.
+- **Avisos:** corre en Windows (no en el NAS); tools que **escriben a la ECU → `ask`** obligatorio
+  (un error puede inutilizar la centralita); implicaciones legales de emisiones según país.
+- **Primer paso cuando se retome:** conseguir doc del OLS530 → decidir B vs C → catalogar la base
+  elegida → construir con el patrón FastMCP + permissions del toolbox.

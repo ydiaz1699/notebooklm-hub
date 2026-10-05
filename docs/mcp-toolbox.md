@@ -144,6 +144,46 @@ esta lista y toma lo que apliquen — así no empiezas de cero ni reinventas pat
   - Regla mnemotécnica: **WebMCP = el sitio colabora. Agente de navegador = el sitio no colabora.**
   Guía aplicada: `docs/añadir-una-funcion-nueva.md`.
 
+## 8ter. Automatizar programas de escritorio (Windows / GUI nativa)
+
+Mismo principio que la web: **busca primero el camino oficial del programa; la automatización de UI
+es el último recurso.** Los 3 orígenes de tools (sección 2) aplican igual a apps de escritorio.
+
+**Orden de preferencia:**
+
+1. **API / scripting / plugin oficial del programa** (ideal). Muchos programas "cerrados" sí traen
+   una vía de automatización: macros, COM/ActiveX, línea de comandos, SDK o un plugin de scripting.
+   Si existe, el MCP **genera y ejecuta ese script**, no simula clics → robusto, no se rompe al
+   cambiar la ventana.
+   - *Ejemplo real:* **WinOLS** (editor binario de ECU, de EVC) tiene un **plugin LUA oficial
+     (OLS530)**; hay productos que automatizan WinOLS por scripting, no por clics. → para WinOLS,
+     el camino correcto es el LUA, **no** el control de ventana. (Requiere su documentación real;
+     no inventar funciones.)
+
+2. **UI Automation (API de accesibilidad de Windows)** — el "DOM" de las apps nativas: ve botones y
+   campos por nombre/rol, no por píxel. Es a las apps lo que Playwright es al navegador.
+   - MCPs reales verificados: **shanselman/FlaUI-MCP** (FlaUI + UIA, autor de Microsoft),
+     **doucej/uia-x**, **microsoft/AutoGenesis** (`pywinauto-mcp`).
+   - Librerías base: `pywinauto`, `FlaUI`, `uiautomation`.
+
+3. **Teclado/ratón sobre controles identificados** (`pywinauto`, **AutoIt** vía
+   `mario-andreschak/mcp-windows-desktop-automation`). Más frágil que UIA puro.
+
+4. **Visión + OCR + clic por coordenadas** (último recurso, lo más frágil): captura de pantalla →
+   OCR → clic. MCPs: **Orbination-AI-Desktop-Vision-Control**, **PyMCPAutoGUI**. Usar solo si la app
+   no expone árbol de accesibilidad (p. ej. render propio tipo canvas/juego).
+
+**Avisos propios de escritorio (distintos de la web):**
+- **Dónde corre:** el MCP de control de UI corre **en la máquina Windows con el programa** (o una VM
+  Windows), NO en un NAS headless Linux. Es un entorno aparte.
+- **Acciones peligrosas → `ask` siempre.** Si la acción es irreversible/física (ej. escribir a una
+  ECU, enviar un pago), va en `permissions.yaml` como `ask` con confirmación. Un fallo puede dañar
+  hardware, no solo borrar un archivo.
+- **Legal/sensible:** algunos dominios (tuning de ECU/emisiones, etc.) tienen implicaciones legales
+  según país; que lo valore el usuario.
+- **Patrón del MCP:** idéntico al resto (FastMCP + tools + permissions). Para el camino 1, cada tool
+  genera el script oficial; para 2-4, cada tool mapea a una acción de UI identificada por nombre.
+
 ## 9. Checklist "verificar antes de entregar"
 
 - [ ] ¿El paquete/imagen existe donde asumo? (PyPI 404 / `gh api` / GHCR) — verificar, no de memoria.
