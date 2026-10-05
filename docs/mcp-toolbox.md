@@ -120,6 +120,19 @@ esta lista y toma lo que apliquen — así no empiezas de cero ni reinventas pat
 - **Guard anti-SSRF:** varios MCPs bloquean IPs privadas por defecto → activar modo permissive para
   LAN (verificar el NOMBRE REAL de la variable en el código, no inventarla).
 
+## 8bis. Capturar endpoints internos (cuando no hay API) + WebMCP
+
+- **Captura manual (siempre funciona):** Chrome `F12` → Network → *Preserve log* → filtrar por el
+  endpoint → hacer UNA acción → leer URL (`rpcids`/ruta), Payload (`f.req`/body) y Response.
+- **Captura asistida/automática:** Playwright (escuchar `request`/`response` y volcar a JSON);
+  extensiones/agentes de reverse-engineering de API (navegas → capturan fetch/XHR → exportan JSON);
+  **MCP de Chrome DevTools** manejado por un agente IA para capturar dentro de un flujo.
+- **WebMCP (`navigator.modelContext`, estándar Chrome/W3C):** deja que **el dueño de un sitio**
+  exponga sus funciones a agentes IA (evita el reverse-engineering) — **solo si el sitio lo
+  implementa**. Útil si construyes TU web; **NO** sirve para automatizar sitios de terceros que no
+  lo adoptaron (p. ej. NotebookLM). No confundir WebMCP (sitio colabora) con capturar tráfico
+  (sitio no colabora). Guía aplicada: `docs/añadir-una-funcion-nueva.md`.
+
 ## 9. Checklist "verificar antes de entregar"
 
 - [ ] ¿El paquete/imagen existe donde asumo? (PyPI 404 / `gh api` / GHCR) — verificar, no de memoria.

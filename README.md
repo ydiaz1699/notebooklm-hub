@@ -28,6 +28,10 @@ en **un solo sitio** y aparece automáticamente en MCP, REST y CLI.
 > (técnicas, librerías y herramientas: transporte en cascada, master-token, auto-reauth, rotación
 > multi-cuenta, distribución GHCR/Docker Hub/git, integración Kiro CLI, checklist). Hogar canónico
 > previsto: `Varios_tools/construir-mcp`.
+>
+> ➕ **¿Google sacó una función nueva y nadie la añadió?** → [`docs/añadir-una-funcion-nueva.md`](docs/añadir-una-funcion-nueva.md)
+> (capturar la llamada con DevTools o captura asistida → registrar rpcid → crear la tool en 1
+> archivo; incluye por qué WebMCP NO aplica a NotebookLM).
 
 ## Por qué existe (los 3 objetivos de diseño)
 
