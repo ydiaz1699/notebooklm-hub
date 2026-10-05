@@ -23,6 +23,11 @@ en **un solo sitio** y aparece automáticamente en MCP, REST y CLI.
 > ¿Cómo accede a NotebookLM si Google no da API? → [`docs/como-funciona-sin-api.md`](docs/como-funciona-sin-api.md)
 > (resumen: imita las llamadas internas de la web con tus cookies; incluye apéndice sobre GHCR vs
 > Docker Hub vs instalar desde git).
+>
+> 🧰 **Template reutilizable para construir/mejorar cualquier MCP** → [`docs/mcp-toolbox.md`](docs/mcp-toolbox.md)
+> (técnicas, librerías y herramientas: transporte en cascada, master-token, auto-reauth, rotación
+> multi-cuenta, distribución GHCR/Docker Hub/git, integración Kiro CLI, checklist). Hogar canónico
+> previsto: `Varios_tools/construir-mcp`.
 
 ## Por qué existe (los 3 objetivos de diseño)
 
