@@ -85,6 +85,7 @@ esta lista y toma lo que apliquen — así no empiezas de cero ni reinventas pat
 | SDK MCP oficial | `modelcontextprotocol/python-sdk` | base del estándar |
 | HTTP cliente | **httpx** | async, lo que usa el núcleo |
 | Navegador (fallback) | **Playwright / Patchright** | Patchright = stealth/anti-detección |
+| Agente de navegador por MCP | **microsoft/playwright-mcp** (Apache-2.0) | controlar Chrome desde un LLM; capturar red (`browser_network_requests`) |
 | gRPC Android | **grpcio + protobuf** | requiere el `.proto` recuperado |
 | REST (para n8n) | **FastAPI + uvicorn** | fachada HTTP sobre el mismo núcleo |
 | CLI | **Typer** | subcomandos legibles |
@@ -124,14 +125,24 @@ esta lista y toma lo que apliquen — así no empiezas de cero ni reinventas pat
 
 - **Captura manual (siempre funciona):** Chrome `F12` → Network → *Preserve log* → filtrar por el
   endpoint → hacer UNA acción → leer URL (`rpcids`/ruta), Payload (`f.req`/body) y Response.
-- **Captura asistida/automática:** Playwright (escuchar `request`/`response` y volcar a JSON);
-  extensiones/agentes de reverse-engineering de API (navegas → capturan fetch/XHR → exportan JSON);
-  **MCP de Chrome DevTools** manejado por un agente IA para capturar dentro de un flujo.
-- **WebMCP (`navigator.modelContext`, estándar Chrome/W3C):** deja que **el dueño de un sitio**
-  exponga sus funciones a agentes IA (evita el reverse-engineering) — **solo si el sitio lo
-  implementa**. Útil si construyes TU web; **NO** sirve para automatizar sitios de terceros que no
-  lo adoptaron (p. ej. NotebookLM). No confundir WebMCP (sitio colabora) con capturar tráfico
-  (sitio no colabora). Guía aplicada: `docs/añadir-una-funcion-nueva.md`.
+- **Captura asistida/automática:** un **agente de navegador** manejado por un LLM. Recomendado:
+  **`microsoft/playwright-mcp`** (Apache-2.0) con `browser_navigate`/`browser_click`/`browser_type`
+  para actuar y `browser_network_requests` + `browser_network_request` para listar/leer las
+  peticiones de red (rpcid + body + respuesta). Alternativas: reverse-api-engineer, MCP de Chrome
+  DevTools, o Playwright embebido como librería.
+
+- **Distinción que NO hay que confundir (dos conceptos opuestos con nombre parecido):**
+  - **WebMCP** (`webmachinelearning/webmcp`, `navigator.modelContext`, Chrome/W3C) = **el dueño del
+    SITIO** declara tools en su propia página para que un agente las invoque **sin reverse-eng**.
+    Solo funciona **si el sitio lo implementa**. Útil si construyes TU web; **NO** sirve para
+    automatizar sitios de terceros que no lo adoptaron (NotebookLM no lo hace).
+  - **Agente de navegador** (playwright-mcp, Chrome DevTools MCP, Playwright/Patchright) = **controla
+    el Chrome real aunque el sitio NO colabore** (clic, teclear, leer DOM/red). Es la técnica que
+    WebMCP busca sustituir, y la ÚNICA que funciona contra sitios cerrados. En notebooklm-hub cumple
+    DOS papeles: (1) **capturar** funciones nuevas (asistido), (2) **ejecutar** como transporte
+    nivel 3 (fallback) cuando `batchexecute` se rompe.
+  - Regla mnemotécnica: **WebMCP = el sitio colabora. Agente de navegador = el sitio no colabora.**
+  Guía aplicada: `docs/añadir-una-funcion-nueva.md`.
 
 ## 9. Checklist "verificar antes de entregar"
 

@@ -55,18 +55,30 @@ real está en 1-2 (capturar), y hay dos modos.
    - **Payload → `f.req`** = el cuerpo (URL-encoded).
    - **Response** = la respuesta (empieza con `)]}'`).
 
-### Modo B — Asistido / automático (captura mientras navegas)
+### Modo B — Asistido / automático (un agente de navegador captura por ti)
 
-Para no leer a mano, hay herramientas que **capturan el tráfico por ti** mientras usas la web y lo
-exportan (URL, método, body, respuesta). Útil si vas a capturar varias funciones:
+Para no leer a mano, un **agente de navegador** puede abrir NotebookLM, hacer la acción y
+listarte la petición de red (rpcid + f.req + respuesta). Útil si vas a capturar varias funciones.
 
-- **Playwright** (lo que usa teng-lin para captura sistemática): un script abre el navegador,
-  escucha las `request`/`response` que matchean `batchexecute` y las vuelca a JSON. Es "modo B
-  casero" y entra como test de captura en el repo.
-- **Extensiones / agentes de reverse-engineering de API** (tipo "reverse-api-engineer",
-  "api-reverse-engineer", MCP de Chrome DevTools): instalas, pulsas *Start*, navegas normal, y al
-  terminar te dan un JSON con todos los endpoints capturados. Un agente IA puede manejar un **MCP de
-  Chrome DevTools** para hacer esta captura dentro de un flujo automatizado.
+**Herramienta recomendada: `microsoft/playwright-mcp`** (Apache-2.0, verificado) — un MCP que un LLM
+(Kiro/Claude/Cursor) maneja para controlar un Chrome real. Trae justo las tools que necesitas:
+- `browser_navigate`, `browser_click`, `browser_type`, `browser_fill_form` → **actuar** (abrir
+  NotebookLM, pulsar el botón de la función nueva).
+- `browser_network_requests` → **lista** las peticiones de red de la página.
+- `browser_network_request` (con el índice) → **headers + body completos** de una petición concreta.
+- `browser_evaluate` → ejecutar JS en la página (p. ej. decodificar el `f.req`).
+
+Prompt tipo para el LLM con ese MCP cargado:
+> "Abre notebooklm.google.com, pulsa el botón de glosario, y dame la petición `batchexecute` que se
+> generó: su `rpcids`, su `f.req` y el inicio de la respuesta."
+
+Otras opciones del mismo estilo: extensiones/agentes de reverse-engineering de API
+(reverse-api-engineer, api-reverse-engineer) o un MCP de Chrome DevTools.
+
+> **No confundir con WebMCP** (`webmachinelearning/webmcp`): WebMCP necesita que **el sitio**
+> declare tools en su propia página → NotebookLM no lo hace → **no sirve** aquí. Un **agente de
+> navegador** (playwright-mcp) controla el Chrome **aunque el sitio no colabore** → **sí sirve**.
+> Son opuestos. Ver `docs/mcp-toolbox.md` §8bis.
 
 > ⚠️ Verifica cualquier herramienta externa contra su fuente antes de usarla (checklist de
 > `docs/mcp-toolbox.md`). El modo A manual es el que **siempre** funciona y no añade dependencias.

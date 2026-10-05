@@ -61,3 +61,15 @@ tenga `notebooklm-hub` cargado (el `select repository` de Kiro Web solo carga lo
    (fila en INDEX + destilado en `repos/notebooklm-hub.md` + mención en `mcp-catalog`), para que un
    chat en frío sepa que existe y no proponga crear otro MCP de NotebookLM. Opcional: ficha en
    `Varios_tools/tool_catalog` reusando `docs/provenance/capabilities-matrix.md` (ya destilado).
+
+3. **Catalogar y (opcional) montar `microsoft/playwright-mcp`.** Es el agente de navegador
+   recomendado para la **captura asistida** de funciones nuevas (ver `docs/añadir-una-funcion-nueva.md`
+   Modo B) y la referencia del transporte nivel 3. Pendiente:
+   - **Catalogar:** ficha en `Varios_tools/tool_catalog/entries/playwright-mcp.md` + fila en
+     `repo-index/mcp-catalog` (Apache-2.0, ~37.8k⭐, tools `browser_navigate/click/type/fill_form`
+     para actuar y `browser_network_requests`/`browser_network_request` para capturar red).
+   - **Montar en Kiro CLI** (patrón del ecosistema): `mcp_tools/playwright.json` + `mcp-build` +
+     `permissions.yaml` V3 → tools de lectura (`browser_network_requests`, `browser_snapshot`) en
+     `allow`; tools que actúan (`browser_click`, `browser_navigate`, `browser_type`) en `ask`.
+   - Nota: para capturar funciones nuevas NO hace falta embeberlo; se usa como MCP aparte desde el
+     LLM. Embeber Playwright como librería es solo para el transporte nivel 3 de notebooklm-hub.
