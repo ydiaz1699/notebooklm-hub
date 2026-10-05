@@ -20,6 +20,10 @@
 Las tres son **fachadas finas** sobre un único núcleo. Añadir o arreglar una capacidad se hace
 en **un solo sitio** y aparece automáticamente en MCP, REST y CLI.
 
+> ¿Cómo accede a NotebookLM si Google no da API? → [`docs/como-funciona-sin-api.md`](docs/como-funciona-sin-api.md)
+> (resumen: imita las llamadas internas de la web con tus cookies; incluye apéndice sobre GHCR vs
+> Docker Hub vs instalar desde git).
+
 ## Por qué existe (los 3 objetivos de diseño)
 
 1. **Universal** — sirve a cualquier LLM **y** a n8n (MCP + REST, mismo núcleo).
