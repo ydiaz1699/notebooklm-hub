@@ -125,3 +125,10 @@ secrets.json
 *.db
 storage_state.json
 playwright/.auth/
+
+
+# NotebookLM authentication secrets
+/_drafts/notebooklm/auth.json
+/_drafts/notebooklm/*auth*.json
+/_drafts/notebooklm/*token*
+/_drafts/notebooklm/cookies*.json
