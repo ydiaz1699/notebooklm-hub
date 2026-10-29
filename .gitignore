@@ -27,3 +27,20 @@ cookies*.json
 
 # transporte Android generado (protobuf) — se regenera
 src/notebooklm_hub/core/transport/_proto/
+
+
+# Additional local secrets
+.env.*
+!.env.example
+!.env.sample
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*_credentials.json
+credentials.json
+secrets.json
+token.json
+
+/_drafts/notebooklm/auth.json
