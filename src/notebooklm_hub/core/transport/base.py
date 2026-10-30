@@ -23,6 +23,19 @@ class TransportError(Exception):
         self.retriable = retriable
 
 
+class RpcRefusedError(Exception):
+    """El backend RESPONDIÓ y rechazó la llamada con un status gRPC (NOT_FOUND, PERMISSION_DENIED…).
+
+    No es TransportError a propósito: otro transporte obtendría la misma negativa, así que la
+    cascada NO debe caer al siguiente nivel; se propaga como fallo de dominio (patrón teng-lin).
+    """
+
+    def __init__(self, message: str, *, status: int, label: str) -> None:
+        super().__init__(message)
+        self.status = status
+        self.label = label
+
+
 @dataclass(frozen=True)
 class TransportResult:
     """Respuesta cruda normalizada que devuelve cualquier transporte."""

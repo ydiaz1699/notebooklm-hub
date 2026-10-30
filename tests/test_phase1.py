@@ -38,11 +38,20 @@ def test_parse_batchexecute_drift_when_no_envelope():
 
 
 def test_parse_batchexecute_refusal_status():
-    # status 7 = PERMISSION_DENIED en el índice 5 del envelope
+    # status 7 = PERMISSION_DENIED en el índice 5 → negativa de DOMINIO (no cae en cascada)
+    from notebooklm_hub.core.transport.base import RpcRefusedError
     text = ")]}'\n" + json.dumps([["wrb.fr", "wXbhsf", None, None, None, [7]]])
+    with pytest.raises(RpcRefusedError) as e:
+        parse_batchexecute(text, "wXbhsf")
+    assert "PERMISSION_DENIED" in str(e.value) and e.value.status == 7
+
+
+def test_parse_batchexecute_unauthenticated_is_transport():
+    # status 16 = UNAUTHENTICATED → problema del canal: TransportError reintentable
+    text = ")]}'\n" + json.dumps([["wrb.fr", "wXbhsf", None, None, None, [16]]])
     with pytest.raises(TransportError) as e:
         parse_batchexecute(text, "wXbhsf")
-    assert "PERMISSION_DENIED" in str(e.value)
+    assert e.value.retriable is True
 
 
 def test_parse_query_response_picks_longest_string():

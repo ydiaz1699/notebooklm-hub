@@ -15,6 +15,7 @@ from ..tools.registry import ToolSpec, discover_tools
 
 _HTTP_FOR = {
     Category.CONFIG: 400, Category.DEPENDENCY: 501, Category.NOT_FOUND: 404,
+    Category.PERMISSION_DENIED: 403,
     Category.AMBIGUOUS: 409, Category.NOTEBOOK_LIMIT: 429, Category.ARTIFACT_TIMEOUT: 504,
     Category.TRANSPORT: 502, Category.NEEDS_CONFIRMATION: 428, Category.UNKNOWN: 500,
 }

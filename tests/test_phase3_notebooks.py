@@ -18,6 +18,7 @@ from notebooklm_hub._app.notebooks import (
     resolve_notebook_id,
 )
 from notebooklm_hub.core.transport import batchexecute as be
+from notebooklm_hub.core.transport.base import RpcRefusedError
 from notebooklm_hub.tools.registry import discover_tools
 
 ID_A = "aaaaaaaa-0000-4000-8000-000000000001"
@@ -46,15 +47,45 @@ def test_parse_notebook_list_shape():
     a = nbs[0]
     assert a["title"] == "Motores" and a["emoji"] == "📘" and a["source_count"] == 2
     assert a["sources"][0] == {"id": "s1", "title": "manual.pdf"}
-    assert a["is_owned"] is True and a["is_shared"] is False
-    assert a["created_at"].startswith("2025-") and a["modified_at"].startswith("2025-")
-    assert nbs[1]["is_owned"] is False and nbs[1]["is_shared"] is True
+    assert a["role"] == "owner" and a["is_owned"] is True and a["is_shared"] is False
+    assert a["created_at"].startswith("2025-") and a["last_viewed_at"].startswith("2025-")
+    assert nbs[1]["role"] == "editor" and nbs[1]["is_owned"] is False
+    assert nbs[1]["is_shared"] is True
 
 
-def test_parse_notebook_list_tolerates_garbage_and_empty():
+def test_parse_notebook_list_empty_shapes_and_bad_rows():
     assert be.parse_notebook_list(None) == []
+    assert be.parse_notebook_list([]) == []
+    assert be.parse_notebook_list([None]) == []      # slot de filas nulo = sin notebooks
     assert be.parse_notebook_list([[]]) == []
-    assert be.parse_notebook_list([[["sin id"], _nb("ok", ID_A)]])[0]["id"] == ID_A
+    # una fila rota no tumba a sus hermanas
+    assert [n["id"] for n in be.parse_notebook_list([[["sin id"], _nb("ok", ID_A)]])] == [ID_A]
+
+
+def test_parse_notebook_list_unknown_shape_is_drift_not_silent():
+    with pytest.raises(be.TransportError) as e:
+        be.parse_notebook_list({"inesperado": 1})
+    assert "drift" in str(e.value).lower()
+    with pytest.raises(be.TransportError):
+        be.parse_notebook_list(["no-es-lista-de-filas"])
+
+
+def test_source_id_envelopes_including_drive():
+    assert be.parse_source_id("plano") == "plano"
+    assert be.parse_source_id(["tipico"]) == "tipico"
+    assert be.parse_source_id([None, True, ["drive-id"]]) == "drive-id"
+    assert be.parse_source_id([None, True, [None]]) == ""
+    assert be.parse_source_id(None) == ""
+    row = ["Con Drive", [[[None, True, ["d1"]], "doc de drive"], [["s9"], "pdf"]], ID_A]
+    assert [s["id"] for s in be.parse_notebook_list([[row]])[0]["sources"]] == ["d1", "s9"]
+
+
+def test_role_viewer_and_thought_prefix_and_unknown_role():
+    row = _nb("thought\nInforme  ", ID_A, owner=3)
+    nb = be.parse_notebook_list([[row]])[0]
+    assert nb["title"] == "Informe" and nb["role"] == "viewer" and nb["is_owned"] is False
+    weird = be.parse_notebook_list([[_nb("x", ID_B, owner=99)]])[0]
+    assert weird["role"] is None and weird["is_owned"] is None
 
 
 def test_parse_notebook_detail():
@@ -129,6 +160,49 @@ def test_list_filter_and_summary_hides_sources():
 def test_get_notebook_by_name_includes_sources():
     nb = asyncio.run(get_notebook(FakeClient(), "Recetas"))
     assert nb["id"] == ID_C and nb["sources"] == []
+
+
+class _RefusingClient(FakeClient):
+    def __init__(self, status):
+        super().__init__()
+        self.status = status
+
+    async def get_notebook(self, nb_id):
+        raise RpcRefusedError("rechazo", status=self.status, label="X")
+
+
+def test_get_notebook_status5_is_not_found_with_account_hint():
+    with pytest.raises(NotFoundError) as e:
+        asyncio.run(get_notebook(_RefusingClient(5), ID_A))
+    assert "otra cuenta" in str(e.value)
+    assert classify(e.value).category == Category.NOT_FOUND
+
+
+def test_get_notebook_permission_denied_propagates_as_such():
+    with pytest.raises(RpcRefusedError) as e:
+        asyncio.run(get_notebook(_RefusingClient(7), ID_A))
+    assert classify(e.value).category == Category.PERMISSION_DENIED
+
+
+def test_cascade_does_not_fall_through_on_domain_refusal():
+    from notebooklm_hub.core.transport.cascade import Cascade
+
+    class _T:
+        def __init__(self, name, exc=None):
+            self.name, self.exc, self.calls = name, exc, 0
+
+        def available(self):
+            return True
+
+        async def call(self, op, **kw):
+            self.calls += 1
+            raise self.exc
+
+    android = _T("android", RpcRefusedError("no", status=5, label="NOT_FOUND"))
+    web = _T("web", RuntimeError("no debería llamarse"))
+    with pytest.raises(RpcRefusedError):
+        asyncio.run(Cascade([android, web]).call("get_notebook"))
+    assert web.calls == 0
 
 
 # ---- tools auto-descubiertas ----

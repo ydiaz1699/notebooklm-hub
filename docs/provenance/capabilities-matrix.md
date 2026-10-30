@@ -137,6 +137,41 @@ notebooklm --backend android      mcp --transport ...
 
 ---
 
+## 4bis. Regla "el mejor de los 7" (cómo se implementa cada capacidad)
+
+`_drafts/notebooklm/` (copia de jacob-bd) **solo sirvió para probar la conexión**. No es la base.
+Antes de implementar una capacidad:
+
+1. Leer cómo la resuelven **todos** los repos que la implementan (no solo el que esté a mano).
+2. Comparar en una tabla y quedarse con la mejor variante de cada detalle (pueden venir de repos
+   distintos). Registrar la decisión abajo con su procedencia.
+3. Si dos fuentes se contradicen, gana la que dice "live-observed"/tiene test de regresión, y se
+   anota la discrepancia.
+
+### Decisiones registradas
+
+**Notebooks: list / get / resolución nombre→ID** (Fase 3, bloque 1 — 2026-10-29).
+Comparados: teng-lin (`_web/notebooks.py`, `_web/rows/notebooks.py`, `_web/rows/sources.py`),
+jacob-bd (`core/notebooks.py`, `core/conversation.py`), roomi (no aplica: lo hace por navegador).
+
+| Detalle | Elegido | De | Descartado |
+|---|---|---|---|
+| Notebook inexistente | gRPC status 5 **o** payload vacío → `NOT_FOUND` + aviso "puede ser de otra cuenta" | teng-lin (#2132) | jacob-bd: error genérico |
+| Negativa del backend (5/7/8) | Error de **dominio**: la cascada NO cae a otro transporte (daría lo mismo) | teng-lin | — |
+| UNAUTHENTICATED / UNIMPLEMENTED (16/12) | Error de **transporte**: la cascada sí prueba otro | propio | — |
+| ID de fuente | 3 formas: plano, `[id]`, Drive `[None, True, [id]]` | teng-lin `SourceRow.id` | jacob-bd: perdía las de Drive |
+| `meta[0]` | Rol `owner/editor/viewer` (+ `is_owned`) | teng-lin enums | jacob-bd: 1=mío/2=compartido |
+| `meta[1]` | `is_shared` | jacob-bd (observación) | — |
+| `meta[5]` | `last_viewed_at` (lista ordenada por último visto) | teng-lin (live-observed) | jacob-bd: "modificado" |
+| Título | Quitar prefijo `thought\n` | teng-lin | — |
+| Forma desconocida | **Drift** explícito, no `[]` silencioso | teng-lin | jacob-bd: `[]` |
+| `ask` sin fuentes | `GET_NOTEBOOK` → todas las fuentes | jacob-bd = teng-lin | (nuestra Fase 1: lista vacía) |
+| Nombre ambiguo | No adivinar → `AMBIGUOUS` con candidatos | teng-lin (convención name-or-ID) | — |
+
+**Pendiente de comparar a fondo antes de implementar:** `ask` completo (citas, seguimiento de
+conversación, `chat_sessions` en `[11]`) — teng-lin `_chat.py` vs jacob-bd `conversation.py` vs
+roomi `query-rpc.ts` (citas al 97 %).
+
 ## 5. Decisiones que esto fija para notebooklm-hub
 
 1. **Base de diseño = patrón de teng-lin** (`client → _app → fachadas`), reimplementado limpio.

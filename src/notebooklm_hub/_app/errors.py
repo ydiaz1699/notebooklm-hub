@@ -16,6 +16,7 @@ class Category(str, Enum):
     CONFIG = "CONFIG"                   # falta auth/parámetro de entorno
     DEPENDENCY = "DEPENDENCY"           # falta una dependencia opcional (browser, grpc…)
     NOT_FOUND = "NOT_FOUND"             # notebook/source/artifact inexistente
+    PERMISSION_DENIED = "PERMISSION_DENIED"  # existe pero la cuenta no tiene permiso
     AMBIGUOUS = "AMBIGUOUS"             # nombre que resuelve a varios → no adivinar
     NOTEBOOK_LIMIT = "NOTEBOOK_LIMIT"   # cuota/límite de la cuenta
     ARTIFACT_TIMEOUT = "ARTIFACT_TIMEOUT"
@@ -44,8 +45,12 @@ class ClassifiedError:
 def classify(exc: Exception) -> ClassifiedError:
     """Mapea una excepción a una categoría neutral. Único sitio de la decisión de categoría."""
     from ..core.auth import AuthError
-    from ..core.transport.base import TransportError
+    from ..core.transport.base import RpcRefusedError, TransportError
 
+    if isinstance(exc, RpcRefusedError):
+        category = {5: Category.NOT_FOUND, 7: Category.PERMISSION_DENIED,
+                    8: Category.NOTEBOOK_LIMIT}.get(exc.status, Category.UNKNOWN)
+        return ClassifiedError(category, str(exc), retriable=(exc.status == 8))
     if isinstance(exc, TransportError):
         return ClassifiedError(Category.TRANSPORT, str(exc), retriable=exc.retriable)
     if isinstance(exc, NotFoundError):

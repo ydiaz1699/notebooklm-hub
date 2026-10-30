@@ -27,7 +27,7 @@ from urllib.parse import quote
 
 import httpx
 
-from .base import Transport, TransportError, TransportResult
+from .base import RpcRefusedError, Transport, TransportError, TransportResult
 
 DEFAULT_HOST = "notebooklm.google.com"
 BATCH_ENDPOINT = "/_/LabsTailwindUi/data/batchexecute"
@@ -58,6 +58,8 @@ _GRPC_STATUS = {
     5: "NOT_FOUND", 7: "PERMISSION_DENIED", 8: "RESOURCE_EXHAUSTED",
     9: "FAILED_PRECONDITION", 12: "UNIMPLEMENTED", 16: "UNAUTHENTICATED",
 }
+# Status que son del CANAL (la cascada puede caer a otro transporte). El resto son de dominio.
+_TRANSPORT_STATUSES = {12, 16}
 
 
 def _resolve_rpc_id(name: str) -> str:
@@ -100,10 +102,13 @@ def parse_batchexecute(text: str, rpc_id: str) -> Any:
                 status = env[5][0] if len(env) >= 6 and isinstance(env[5], list) else None
                 if isinstance(status, int) and status != 0:
                     label = _GRPC_STATUS.get(status, f"status {status}")
-                    raise TransportError(
-                        f"NotebookLM rechazó la llamada: {label}",
-                        retriable=(status == 16),  # solo UNAUTHENTICATED se reintenta
-                    )
+                    if status in _TRANSPORT_STATUSES:
+                        # Problema del canal (sesión/método): otro transporte podría funcionar.
+                        raise TransportError(f"NotebookLM rechazó la llamada: {label}",
+                                             retriable=(status == 16))
+                    # Negativa de dominio: repetir por otro transporte daría lo mismo.
+                    raise RpcRefusedError(f"NotebookLM rechazó la llamada: {label}",
+                                          status=status, label=label)
                 return None
             if len(env) >= 1 and env[0] == "er":
                 raise TransportError("batchexecute devolvió un envelope de error", retriable=False)
@@ -168,44 +173,81 @@ def _ts(value: Any) -> str | None:
     return None
 
 
-def _parse_notebook_entry(nb: Any) -> dict[str, Any] | None:
-    """Una entrada de notebook del protocolo → dict canónico.
+# meta[0] = userRole de la cuenta que llama (proto OWNER/WRITER/READER). Fuente: teng-lin enums.
+_ROLES = {1: "owner", 2: "editor", 3: "viewer"}
 
-    Estructura observada (jacob-bd notebooks.py, MIT):
-      [0] título · [1] fuentes [[ [source_id], título, ...], ...] · [2] notebook id
-      [3] emoji|null · [5] metadata: [0]=propiedad (1=mío, 2=compartido conmigo),
-          [1]=compartido (bool), [5]=modificado [s,ns], [8]=creado [s,ns]
+
+def parse_source_id(envelope: Any) -> str:
+    """Envoltorio del id de fuente → id ("" si está mal formado). Pura.
+
+    Tres variantes (teng-lin SourceRow.id, la más completa de los 7 repos):
+      "id" (plano) · ["id"] (típico) · [None, True, ["id"]] (fuente de Google Drive).
+    jacob-bd/ishandutta solo cubren las dos primeras → perdían las fuentes de Drive.
+    """
+    if envelope is None:
+        return ""
+    if not isinstance(envelope, list):
+        return str(envelope)
+    if envelope and envelope[0] is not None:
+        return str(envelope[0])
+    if len(envelope) > 2 and isinstance(envelope[2], list) and envelope[2]:
+        return str(envelope[2][0]) if envelope[2][0] is not None else ""
+    return ""
+
+
+def _parse_notebook_entry(nb: Any) -> dict[str, Any] | None:
+    """Una fila `Project` del protocolo → dict canónico. Pura.
+
+    Posiciones (contrastadas teng-lin _web/rows/notebooks.py + jacob-bd notebooks.py):
+      [0] título · [1] fuentes [[id_envelope, título, ...], ...] (None si vacío) · [2] id
+      [3] emoji · [5] metadata: [0]=rol (1 owner/2 editor/3 viewer), [1]=compartido (jacob-bd),
+          [5]=último visto [s,ns] (teng-lin, live-observed; NO "modificado"), [8]=creado [s,ns]
     """
     if not isinstance(nb, list) or len(nb) < 3 or not isinstance(nb[2], str) or not nb[2]:
         return None
     sources = []
     for src in nb[1] if isinstance(nb[1], list) else []:
         if isinstance(src, list) and src:
-            sid = src[0][0] if isinstance(src[0], list) and src[0] else src[0]
-            if isinstance(sid, str):
+            sid = parse_source_id(src[0])
+            if sid:
                 title = src[1] if len(src) > 1 and isinstance(src[1], str) else "Untitled"
                 sources.append({"id": sid, "title": title})
     meta = nb[5] if len(nb) > 5 and isinstance(nb[5], list) else []
+    raw_role = meta[0] if meta else None
+    role = _ROLES.get(raw_role) if isinstance(raw_role, int) and not isinstance(
+        raw_role, bool) else None
+    # Google a veces antepone "thought\n" al título (teng-lin decode_notebook).
+    title = nb[0].replace("thought\n", "").strip() if isinstance(nb[0], str) else ""
     return {
         "id": nb[2],
-        "title": nb[0] if isinstance(nb[0], str) and nb[0] else "Untitled",
+        "title": title or "Untitled",
         "emoji": nb[3] if len(nb) > 3 and isinstance(nb[3], str) else None,
         "source_count": len(sources),
         "sources": sources,
-        "is_owned": (meta[0] == 1) if meta else True,
-        "is_shared": bool(meta[1]) if len(meta) > 1 else False,
-        "modified_at": _ts(meta[5]) if len(meta) > 5 else None,
+        "role": role,
+        "is_owned": role == "owner" if role else None,
+        "is_shared": bool(meta[1]) if len(meta) > 1 else None,
+        "last_viewed_at": _ts(meta[5]) if len(meta) > 5 else None,
         "created_at": _ts(meta[8]) if len(meta) > 8 else None,
     }
 
 
 def parse_notebook_list(payload: Any) -> list[dict[str, Any]]:
-    """Payload de LIST_NOTEBOOKS → lista de notebooks canónicos. Pura."""
-    if not isinstance(payload, list) or not payload:
+    """Payload de LIST_NOTEBOOKS ([[fila, fila, ...]]) → notebooks, más recientes primero. Pura.
+
+    Vacío/None = "sin notebooks" legítimo. Una forma desconocida NO se silencia: es drift
+    (Google cambió el formato) y se avisa, en vez de devolver [] y aparentar que no hay nada.
+    """
+    if not payload:
         return []
-    entries = payload[0] if isinstance(payload[0], list) and (
-        not payload[0] or isinstance(payload[0][0], list)) else payload
-    return [nb for nb in (_parse_notebook_entry(e) for e in entries) if nb]
+    if isinstance(payload, list):
+        rows = payload[0]
+        if rows is None:
+            return []
+        if isinstance(rows, list):
+            return [nb for nb in (_parse_notebook_entry(r) for r in rows) if nb]
+    raise TransportError("Formato de LIST_NOTEBOOKS no reconocido (drift). "
+                         "Revisa docs/transport/README.md.", retriable=False)
 
 
 def parse_notebook_detail(payload: Any) -> dict[str, Any] | None:
