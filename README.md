@@ -132,7 +132,8 @@ nada más. Aparece solo en MCP, REST y CLI.
 ## Procedencia y licencias
 
 Este proyecto es MIT. Las capacidades están **inspiradas** en proyectos de terceros, todos MIT,
-destilados —no copiados— en [`docs/provenance/`](docs/provenance/). Agradecimiento a sus autores.
+destilados —no copiados— en [`docs/provenance/`](docs/provenance/). Todos los contribuyentes y
+proyectos de referencia están acreditados en [`CREDITS.md`](CREDITS.md).
 
 ## Aviso
 
