@@ -40,7 +40,9 @@ Objetivo: una operación de punta a punta por MCP y REST.
       `label_add_source`, `source_add_text` (con reconciliación de escrituras dudosas).
 - [x] **Fase A (bloque 2):** `chat_settings_get`, `chat_configure` (lectura-mezcla-escritura +
       verificación), `source_rename` (verificado releyendo).
-- [ ] Fase A restante: Deep Research (R2) — bloque aparte (asíncrono, ~5 min, importación)
+- [x] **Fase A (bloque 3):** `research_start` / `research_status` / `research_import` (Fast y Deep,
+      con informe, reconciliación e importación idempotente). **Fase A completa.**
+- [ ] **Fase B:** motor (estado SQLite + snapshot + reglas + runner) — `docs/design/motor-inteligente.md`
 - [ ] notebooks restantes (create/rename/delete+confirm)
 - [ ] sources (add url/text/file/drive, list, read paginado, delete+confirm, wait)
 - [ ] studio (generate async → status → download; audio/vídeo/report/infografía/slides +

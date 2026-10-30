@@ -64,6 +64,19 @@ class Client:
         return (await self.call("rename_source", notebook_id=notebook_id, source_id=source_id,
                                 title=title)).data
 
+    async def research_start(self, notebook_id: str, query: str, mode: str) -> dict[str, Any]:
+        return (await self.call("research_start", notebook_id=notebook_id, query=query,
+                                mode=mode)).data
+
+    async def research_poll(self, notebook_id: str) -> list[dict[str, Any]]:
+        return (await self.call("research_poll", notebook_id=notebook_id)).data
+
+    async def research_import(self, notebook_id: str, task_id: str,
+                              results: list[dict[str, Any]]) -> dict[str, Any]:
+        from .transport.web_research import build_import_entries
+        return (await self.call("research_import", notebook_id=notebook_id, task_id=task_id,
+                                entries=build_import_entries(results))).data
+
     async def add_text_source(self, notebook_id: str, title: str,
                               content: str) -> dict[str, Any]:
         return (await self.call("add_text_source", notebook_id=notebook_id, title=title,

@@ -17,6 +17,7 @@ class Category(str, Enum):
     DEPENDENCY = "DEPENDENCY"           # falta una dependencia opcional (browser, grpc…)
     NOT_FOUND = "NOT_FOUND"             # notebook/source/artifact inexistente
     PERMISSION_DENIED = "PERMISSION_DENIED"  # existe pero la cuenta no tiene permiso
+    NOT_READY = "NOT_READY"             # depende de algo aún en curso (reintentar luego)
     AMBIGUOUS = "AMBIGUOUS"             # nombre que resuelve a varios → no adivinar
     NOTEBOOK_LIMIT = "NOTEBOOK_LIMIT"   # cuota/límite de la cuenta
     ARTIFACT_TIMEOUT = "ARTIFACT_TIMEOUT"
@@ -29,6 +30,11 @@ class Category(str, Enum):
 
 class NotFoundError(LookupError):
     """Fallo de dominio: el notebook/fuente pedido no existe. NO es TransportError (no cae)."""
+
+
+class NotReadyError(RuntimeError):
+    """Fallo de dominio: la operación depende de algo que aún no terminó (p. ej. investigación
+    en curso). Reintentable más tarde."""
 
 
 class AmbiguousError(LookupError):
@@ -55,6 +61,8 @@ def classify(exc: Exception) -> ClassifiedError:
         return ClassifiedError(category, str(exc), retriable=(exc.status == 8))
     if isinstance(exc, TransportError):
         return ClassifiedError(Category.TRANSPORT, str(exc), retriable=exc.retriable)
+    if isinstance(exc, NotReadyError):
+        return ClassifiedError(Category.NOT_READY, str(exc), retriable=True)
     if isinstance(exc, NotFoundError):
         return ClassifiedError(Category.NOT_FOUND, str(exc))
     if isinstance(exc, AmbiguousError):

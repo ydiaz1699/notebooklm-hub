@@ -46,6 +46,11 @@ from .web_labels import (
     build_list_labels_params,
     parse_label_set,
 )
+from .web_research import build_import_params as build_research_import_params
+from .web_research import build_start_params as build_research_start_params
+from .web_research import parse_import as parse_research_import
+from .web_research import parse_poll as parse_research_poll
+from .web_research import parse_start as parse_research_start
 from .web_settings import build_configure_params, build_rename_source_params, parse_chat_settings
 from .web_sources import build_add_text_params, parse_added_source
 
@@ -77,6 +82,10 @@ _RPC_IDS = {
     "UPDATE_LABEL": "le8sX",                # renombrar / asignar fuente
     "RENAME_NOTEBOOK": "s0tc2d",            # MutateProject: título y ajustes del chat
     "UPDATE_SOURCE": "b7Wfje",              # MutateSource: renombrar fuente
+    "START_FAST_RESEARCH": "Ljjv0c",        # investigación rápida (~30 s, ~10 fuentes)
+    "START_DEEP_RESEARCH": "QA9ei",         # Deep Research (~5 min, ~40 fuentes, solo web)
+    "POLL_RESEARCH": "e3bVqc",              # estado de las investigaciones del notebook
+    "IMPORT_RESEARCH": "LBwxtb",            # importar resultados como fuentes
 }
 
 # Códigos gRPC estándar que el backend pone en el índice 5 del envelope al rechazar.
@@ -298,15 +307,21 @@ class BatchExecuteTransport:
 
     _OPERATIONS = ("ask", "list_notebooks", "get_notebook", "list_labels", "generate_labels",
                    "assign_source_to_label", "add_text_source", "get_chat_settings",
-                   "configure_chat", "rename_source")
+                   "configure_chat", "rename_source", "research_start", "research_poll",
+                   "research_import")
 
     async def call(self, operation: str, **params: Any) -> TransportResult:
         """Ejecuta una operación y devuelve datos ya parseados (ver _OPERATIONS)."""
         if operation not in self._OPERATIONS:
             raise TransportError(f"operación '{operation}' no implementada aún en batchexecute",
                                  retriable=False)
-        async with httpx.AsyncClient(timeout=120) as client:
+        # Importar muchas fuentes de una investigación tarda más (jacob-bd usa 300 s).
+        timeout = 300 if operation == "research_import" else 120
+        async with httpx.AsyncClient(timeout=timeout) as client:
             await self._bootstrap(client)
+            if operation.startswith("research_"):
+                data = await self._research_op(client, operation, **params)
+                return TransportResult(data=data, backend=self.name)
             if operation in ("list_labels", "generate_labels", "assign_source_to_label",
                              "add_text_source", "get_chat_settings", "configure_chat",
                              "rename_source"):
@@ -399,6 +414,57 @@ class BatchExecuteTransport:
                 f"ADD_SOURCE respondió con un formato no reconocido (drift) y la fuente '{title}' "
                 "no aparece al releer. Revisa el cuaderno antes de reintentar.")
         return {**added, "reconciled": False}
+
+    async def _research_op(self, client: httpx.AsyncClient, operation: str, **p: Any) -> Any:
+        nb_id = p["notebook_id"]
+        path = f"/notebook/{nb_id}"
+        if operation == "research_start":
+            rpc, rpc_params = build_research_start_params(nb_id, p["query"], p["mode"])
+            return parse_research_start(await self._rpc(client, rpc, rpc_params,
+                                                        source_path=path))
+        if operation == "research_poll":
+            return parse_research_poll(await self._rpc(client, "POLL_RESEARCH",
+                                                       [None, None, nb_id], source_path=path))
+        # research_import: escritura de varias fuentes. Si la respuesta es dudosa (3/9, corte),
+        # se comparan los IDs de fuentes antes/después (jacob-bd import_research_sources).
+        before = await self._source_ids(client, nb_id)
+        params = build_research_import_params(nb_id, p["task_id"], p["entries"])
+        try:
+            imported = parse_research_import(await self._rpc(client, "IMPORT_RESEARCH", params,
+                                                             source_path=path))
+        except (RpcRefusedError, TransportError, httpx.HTTPError) as exc:
+            if isinstance(exc, RpcRefusedError) and exc.status not in (3, 9):
+                raise
+            new = await self._new_sources(client, nb_id, before)
+            if new:
+                return {"imported": new, "reconciled": True}
+            raise UnconfirmedWriteError(
+                f"No se pudo confirmar la importación de la investigación ({exc}). Revisa el "
+                "cuaderno antes de reintentar para no duplicar fuentes.") from exc
+        if not imported:
+            new = await self._new_sources(client, nb_id, before)
+            return {"imported": new, "reconciled": bool(new)}
+        return {"imported": imported, "reconciled": False}
+
+    async def _source_ids(self, client: httpx.AsyncClient, nb_id: str) -> set[str] | None:
+        try:
+            payload = await self._rpc(client, "GET_NOTEBOOK", [nb_id, None, [2], None, 0],
+                                      source_path=f"/notebook/{nb_id}")
+        except (RpcRefusedError, TransportError, httpx.HTTPError):
+            return None
+        return {s["id"] for s in (parse_notebook_detail(payload) or {}).get("sources", [])}
+
+    async def _new_sources(self, client: httpx.AsyncClient, nb_id: str,
+                           before: set[str] | None) -> list[dict[str, Any]]:
+        if before is None:
+            return []                    # sin foto previa no se puede comparar con seguridad
+        try:
+            payload = await self._rpc(client, "GET_NOTEBOOK", [nb_id, None, [2], None, 0],
+                                      source_path=f"/notebook/{nb_id}")
+        except (RpcRefusedError, TransportError, httpx.HTTPError):
+            return []
+        sources = (parse_notebook_detail(payload) or {}).get("sources", [])
+        return [dict(s) for s in sources if s["id"] not in before]
 
     async def _find_source_by_title(self, client: httpx.AsyncClient, nb_id: str,
                                     title: str) -> dict[str, Any] | None:
