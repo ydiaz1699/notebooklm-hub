@@ -36,6 +36,9 @@ Objetivo: una operación de punta a punta por MCP y REST.
 - [x] suite 33/33 (incluye transporte contra servidor HTTP simulado). Pendiente run real (igual que Fase 1).
 - [x] **`ask` completo (mejor de los 7):** citas con fuente/texto/score, conversación real
       (visible en la web), seguimientos con `conversation_id`, errores de cuota/rechazo claros.
+- [x] **Fase A del motor (bloque 1):** `label_list`, `label_auto`, `label_reorganize` (destructiva),
+      `label_add_source`, `source_add_text` (con reconciliación de escrituras dudosas).
+- [ ] Fase A restante: `source_rename`, `chat_configure`, Deep Research (ver `docs/design/recetas.md` §6)
 - [ ] notebooks restantes (create/rename/delete+confirm)
 - [ ] sources (add url/text/file/drive, list, read paginado, delete+confirm, wait)
 - [ ] studio (generate async → status → download; audio/vídeo/report/infografía/slides +

@@ -39,3 +39,19 @@ class Client:
 
     async def get_notebook(self, notebook_id: str) -> dict[str, Any] | None:
         return (await self.call("get_notebook", notebook_id=notebook_id)).data
+
+    async def list_labels(self, notebook_id: str) -> list[dict[str, Any]]:
+        return (await self.call("list_labels", notebook_id=notebook_id)).data
+
+    async def generate_labels(self, notebook_id: str, scope: str) -> list[dict[str, Any]]:
+        return (await self.call("generate_labels", notebook_id=notebook_id, scope=scope)).data
+
+    async def assign_source_to_label(self, notebook_id: str, label_id: str,
+                                     source_id: str) -> dict[str, Any]:
+        return (await self.call("assign_source_to_label", notebook_id=notebook_id,
+                                label_id=label_id, source_id=source_id)).data
+
+    async def add_text_source(self, notebook_id: str, title: str,
+                              content: str) -> dict[str, Any]:
+        return (await self.call("add_text_source", notebook_id=notebook_id, title=title,
+                                content=content)).data

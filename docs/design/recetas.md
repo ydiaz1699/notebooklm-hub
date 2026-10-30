@@ -125,10 +125,10 @@ prompts** para quien quiera usarlas a mano.
 | Capacidad | Hay en | En notebooklm-hub |
 |---|---|---|
 | Preguntar con fuentes concretas + seguir conversación | — | ✅ `notebook_ask` (PR #6) |
-| Leer etiquetas (sin modificar) | teng-lin `LIST_LABELS = I3xc3c` | ❌ |
-| Autoetiquetar | jacob-bd/teng-lin `agX4Bc` | ❌ |
-| Mover fuente a etiqueta | jacob-bd `core/labels.py:move_source_to_label`, teng-lin `le8sX` | ❌ |
-| Añadir fuente de texto con título | jacob-bd `core/sources.py:add_text_source` | ❌ |
+| Leer etiquetas (sin modificar) | teng-lin `LIST_LABELS = I3xc3c` | ✅ `label_list` |
+| Autoetiquetar | jacob-bd/teng-lin `agX4Bc` | ✅ `label_auto` (incremental) · `label_reorganize` (destructiva) |
+| Mover fuente a etiqueta | jacob-bd `core/labels.py:move_source_to_label`, teng-lin `le8sX` | ✅ `label_add_source` |
+| Añadir fuente de texto con título | jacob-bd `core/sources.py:add_text_source` | ✅ `source_add_text` (con reconciliación) |
 | Renombrar fuente | jacob-bd `core/sources.py:rename_source` | ❌ |
 | Personalizar chat (≤ 10 000 chars) | jacob-bd `configure_chat`, teng-lin `_send_configure` | ❌ |
 | Deep Research | jacob-bd `core/research.py`, teng-lin `_research.py` | ❌ |
@@ -138,11 +138,10 @@ Todas existen en los repos de referencia; antes de implementarlas se compararán
 
 ## 7. Procedencia y licencia de los prompts
 
-Los prompts son de **IA MASIVA** (recursos gratuitos de su web), aportados en `_drafts/prompt/`.
-El repo es **público**: antes de copiarlos a `src/` conviene confirmar que se pueden redistribuir.
-Alternativas si no: (a) mantener la atribución y el enlace al recurso original, (b) que el MCP los
-cargue desde una carpeta local fuera del repo (`NOTEBOOKLM_HUB_RECIPES_DIR`), o (c) reescribirlos
-con nuestras propias palabras manteniendo el método.
+Los prompts son de **IA MASIVA** (recursos de su web), aportados en `_drafts/prompt/`.
+**Decisión (2026-10-29):** se pueden redistribuir — el autor del repo colabora con IA MASIVA.
+Al copiarlos a `src/notebooklm_hub/_app/recipes/prompts/` cada archivo llevará una cabecera de
+atribución (`Autor: IA MASIVA · origen: <recurso>`) y el README citará la procedencia.
 
 ## 8. Orden de trabajo propuesto
 
