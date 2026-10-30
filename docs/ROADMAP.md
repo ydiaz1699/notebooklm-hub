@@ -27,8 +27,14 @@ Objetivo: una operación de punta a punta por MCP y REST.
 - [ ] `cascade.py` con fallback y preferencia configurable
 - [ ] matriz de "qué toco si Google rompe X" validada
 
-## Fase 3 — Superficie de tools completa
-- [ ] notebooks (create/list/delete+confirm/rename/get)
+## Fase 3 — Superficie de tools completa  ← EN CURSO
+- [x] **Bloque 1 (lectura):** `notebook_list` + `notebook_get` + resolución nombre→ID en todas las
+      tools (exacto > parcial; si es ambiguo NO adivina → `AMBIGUOUS` con candidatos). Llamada
+      `batchexecute` genérica (`_rpc`) reutilizable por el resto de RPCs.
+- [x] **Fix de `ask`:** sin `source_ids` enviaba la lista de fuentes vacía; ahora pide antes
+      `GET_NOTEBOOK` y pregunta a todas las fuentes (comportamiento de la web, verificado en jacob-bd).
+- [x] suite 33/33 (incluye transporte contra servidor HTTP simulado). Pendiente run real (igual que Fase 1).
+- [ ] notebooks restantes (create/rename/delete+confirm)
 - [ ] sources (add url/text/file/drive, list, read paginado, delete+confirm, wait)
 - [ ] studio (generate async → status → download; audio/vídeo/report/infografía/slides +
       flashcards/quiz/mind-map de ishandutta)

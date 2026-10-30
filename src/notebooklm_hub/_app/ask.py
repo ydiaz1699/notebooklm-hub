@@ -8,10 +8,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .notebooks import resolve_notebook_id
+
 
 @dataclass(frozen=True)
 class AskRequest:
-    notebook: str                      # nombre o ID (Fase 3 resuelve nombre→ID)
+    notebook: str                      # nombre o ID (se resuelve en execute_ask)
     question: str
     source_ids: list[str] | None = None
 
@@ -33,9 +35,11 @@ def build_ask_plan(req: AskRequest) -> AskRequest:
 
 
 async def execute_ask(plan: AskRequest, client: Any) -> AskResult:
-    data = await client.ask(plan.notebook, plan.question, plan.source_ids)
+    # Acepta nombre o ID; un ID no hace llamada extra. Ambiguo/inexistente → error de dominio.
+    notebook_id = await resolve_notebook_id(client, plan.notebook)
+    data = await client.ask(notebook_id, plan.question, plan.source_ids)
     return AskResult(
         answer=data.get("answer", ""),
         conversation_id=data.get("conversation_id", ""),
-        notebook_id=data.get("notebook_id", plan.notebook),
+        notebook_id=data.get("notebook_id", notebook_id),
     )

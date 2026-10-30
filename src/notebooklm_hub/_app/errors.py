@@ -26,6 +26,14 @@ class Category(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+class NotFoundError(LookupError):
+    """Fallo de dominio: el notebook/fuente pedido no existe. NO es TransportError (no cae)."""
+
+
+class AmbiguousError(LookupError):
+    """Fallo de dominio: un nombre coincide con varios recursos. No adivinar: pedir el ID."""
+
+
 @dataclass(frozen=True)
 class ClassifiedError:
     category: Category
@@ -40,6 +48,10 @@ def classify(exc: Exception) -> ClassifiedError:
 
     if isinstance(exc, TransportError):
         return ClassifiedError(Category.TRANSPORT, str(exc), retriable=exc.retriable)
+    if isinstance(exc, NotFoundError):
+        return ClassifiedError(Category.NOT_FOUND, str(exc))
+    if isinstance(exc, AmbiguousError):
+        return ClassifiedError(Category.AMBIGUOUS, str(exc))
     if isinstance(exc, AuthError):
         return ClassifiedError(Category.CONFIG, str(exc))
     if isinstance(exc, ValueError):

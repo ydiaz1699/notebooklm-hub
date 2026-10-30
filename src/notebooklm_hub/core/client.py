@@ -12,7 +12,7 @@ from typing import Any
 
 from .auth import load_cookie_header
 from .transport.base import TransportResult
-from .transport.batchexecute import BatchExecuteTransport, DEFAULT_HOST
+from .transport.batchexecute import DEFAULT_HOST, BatchExecuteTransport
 from .transport.cascade import Cascade
 
 
@@ -32,3 +32,9 @@ class Client:
         res = await self.call("ask", notebook_id=notebook_id, question=question,
                               source_ids=source_ids)
         return res.data
+
+    async def list_notebooks(self) -> list[dict[str, Any]]:
+        return (await self.call("list_notebooks")).data
+
+    async def get_notebook(self, notebook_id: str) -> dict[str, Any] | None:
+        return (await self.call("get_notebook", notebook_id=notebook_id)).data

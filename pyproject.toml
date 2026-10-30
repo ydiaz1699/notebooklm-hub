@@ -36,3 +36,7 @@ packages = ["src/notebooklm_hub"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.pytest.ini_options]
+# Solo nuestra suite: _drafts/ contiene proyectos de referencia con sus propios tests.
+testpaths = ["tests"]

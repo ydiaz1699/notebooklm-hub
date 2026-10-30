@@ -75,10 +75,11 @@ Detalle completo: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Estado
 
-🚧 **Fase 1 — vertical funcional mínima (`ask`).** Ya existe el código real de: transporte web
-(`batchexecute`), auth por cookies, núcleo, la tool `notebook_ask` y las fachadas MCP + REST.
-La lógica, el parseo del protocolo y el cableado de las fachadas están **probados** (suite 14/14 +
-ambas fachadas levantan y exponen la tool).
+🚧 **Fase 3 en curso (bloque 1 hecho).** Tools disponibles: `notebook_list`, `notebook_get` y
+`notebook_ask` (todas aceptan nombre o ID del notebook). Existe el código real de: transporte web
+(`batchexecute`), auth por cookies, núcleo y fachadas MCP + REST. La lógica, el parseo del
+protocolo y el cableado están **probados** (suite 33/33, con el transporte contra un servidor HTTP
+simulado; ambas fachadas publican las 3 tools).
 
 > ⚠️ **Pendiente de verificación en entorno real.** El transporte habla con endpoints internos de
 > Google que **no se han podido probar contra una cuenta real** desde el entorno de desarrollo
@@ -102,6 +103,9 @@ export NOTEBOOKLM_HUB_COOKIE_FILE=~/nlm-cookies.json
 
 # Probar por REST (para n8n/curl):
 nlmhub-rest &            # levanta en 127.0.0.1:9420
+# 1) primera prueba, solo lectura: ¿ve tus notebooks?
+curl -s localhost:9420/tools/notebook_list -H 'content-type: application/json' -d '{}'
+# 2) preguntar (nombre o ID del notebook)
 curl -s localhost:9420/tools/notebook_ask \
   -H 'content-type: application/json' \
   -d '{"notebook":"<ID o nombre>","question":"¿qué dicen mis fuentes sobre X?"}'
