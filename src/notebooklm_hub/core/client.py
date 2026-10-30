@@ -28,9 +28,10 @@ class Client:
 
     # Operaciones de alto nivel (envoltura legible sobre call). Crecerán por fase.
     async def ask(self, notebook_id: str, question: str,
-                  source_ids: list[str] | None = None) -> dict[str, Any]:
+                  source_ids: list[str] | None = None,
+                  conversation_id: str | None = None) -> dict[str, Any]:
         res = await self.call("ask", notebook_id=notebook_id, question=question,
-                              source_ids=source_ids)
+                              source_ids=source_ids, conversation_id=conversation_id)
         return res.data
 
     async def list_notebooks(self) -> list[dict[str, Any]]:

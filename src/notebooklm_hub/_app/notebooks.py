@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from ..core.transport.base import RpcRefusedError
 from .errors import AmbiguousError, NotFoundError
 
 # Los IDs de notebook son UUID v4 (36 chars con guiones).
@@ -47,8 +48,8 @@ async def resolve_notebook_id(client: Any, notebook: str) -> str:
 def summarize(nb: dict[str, Any]) -> dict[str, Any]:
     """Vista corta para listados (sin la lista completa de fuentes)."""
     return {k: nb.get(k) for k in
-            ("id", "title", "emoji", "source_count", "is_owned", "is_shared",
-             "created_at", "modified_at")}
+            ("id", "title", "emoji", "source_count", "role", "is_owned", "is_shared",
+             "created_at", "last_viewed_at")}
 
 
 async def list_notebooks(client: Any, query: str | None = None) -> list[dict[str, Any]]:
@@ -58,9 +59,19 @@ async def list_notebooks(client: Any, query: str | None = None) -> list[dict[str
     return [summarize(nb) for nb in notebooks]
 
 
+_NOT_FOUND_HINT = ("no existe o pertenece a otra cuenta de Google (NotebookLM responde igual en "
+                   "ambos casos). Revisa con qué cuenta están las cookies.")
+
+
 async def get_notebook(client: Any, notebook: str) -> dict[str, Any]:
     nb_id = await resolve_notebook_id(client, notebook)
-    nb = await client.get_notebook(nb_id)
+    try:
+        nb = await client.get_notebook(nb_id)
+    except RpcRefusedError as exc:
+        # Status 5 y payload vacío son las DOS señales de "no encontrado" (teng-lin #2132).
+        if exc.status == 5:
+            raise NotFoundError(f"El notebook '{notebook}' {_NOT_FOUND_HINT}") from exc
+        raise
     if not nb:
-        raise NotFoundError(f"El notebook '{notebook}' no existe o no tienes acceso.")
+        raise NotFoundError(f"El notebook '{notebook}' {_NOT_FOUND_HINT}")
     return nb

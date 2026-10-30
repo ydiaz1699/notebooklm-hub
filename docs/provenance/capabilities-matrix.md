@@ -137,6 +137,64 @@ notebooklm --backend android      mcp --transport ...
 
 ---
 
+## 4bis. Regla "el mejor de los 7" (cómo se implementa cada capacidad)
+
+`_drafts/notebooklm/` (copia de jacob-bd) **solo sirvió para probar la conexión**. No es la base.
+Antes de implementar una capacidad:
+
+1. Leer cómo la resuelven **todos** los repos que la implementan (no solo el que esté a mano).
+2. Comparar en una tabla y quedarse con la mejor variante de cada detalle (pueden venir de repos
+   distintos). Registrar la decisión abajo con su procedencia.
+3. Si dos fuentes se contradicen, gana la que dice "live-observed"/tiene test de regresión, y se
+   anota la discrepancia.
+
+### Decisiones registradas
+
+**Notebooks: list / get / resolución nombre→ID** (Fase 3, bloque 1 — 2026-10-29).
+Comparados: teng-lin (`_web/notebooks.py`, `_web/rows/notebooks.py`, `_web/rows/sources.py`),
+jacob-bd (`core/notebooks.py`, `core/conversation.py`), roomi (no aplica: lo hace por navegador).
+
+| Detalle | Elegido | De | Descartado |
+|---|---|---|---|
+| Notebook inexistente | gRPC status 5 **o** payload vacío → `NOT_FOUND` + aviso "puede ser de otra cuenta" | teng-lin (#2132) | jacob-bd: error genérico |
+| Negativa del backend (5/7/8) | Error de **dominio**: la cascada NO cae a otro transporte (daría lo mismo) | teng-lin | — |
+| UNAUTHENTICATED / UNIMPLEMENTED (16/12) | Error de **transporte**: la cascada sí prueba otro | propio | — |
+| ID de fuente | 3 formas: plano, `[id]`, Drive `[None, True, [id]]` | teng-lin `SourceRow.id` | jacob-bd: perdía las de Drive |
+| `meta[0]` | Rol `owner/editor/viewer` (+ `is_owned`) | teng-lin enums | jacob-bd: 1=mío/2=compartido |
+| `meta[1]` | `is_shared` | jacob-bd (observación) | — |
+| `meta[5]` | `last_viewed_at` (lista ordenada por último visto) | teng-lin (live-observed) | jacob-bd: "modificado" |
+| Título | Quitar prefijo `thought\n` | teng-lin | — |
+| Forma desconocida | **Drift** explícito, no `[]` silencioso | teng-lin | jacob-bd: `[]` |
+| `ask` sin fuentes | `GET_NOTEBOOK` → todas las fuentes | jacob-bd = teng-lin | (nuestra Fase 1: lista vacía) |
+| Nombre ambiguo | No adivinar → `AMBIGUOUS` con candidatos | teng-lin (convención name-or-ID) | — |
+
+**Chat: `ask` (respuesta, citas, conversación)** (Fase 3 — 2026-10-29).
+Comparados: teng-lin (`_chat.py`, `_web/params/chat_stream.py`, `_web/rows/chat_stream.py`,
+`_web/rows/chat.py`, `_web/rows/documents.py`), jacob-bd (`core/conversation.py`), roomi
+(`src/rpc/query-rpc.ts`). Resultado: roomi es una variante de jacob-bd; teng-lin gana en todo.
+Implementado en `core/transport/web_chat.py` (funciones puras).
+
+| Detalle | Elegido | De | Descartado |
+|---|---|---|---|
+| Campos de la petición | 9: `[fuentes, pregunta, historial, [2,None,[1],[1]], conv_id, None, None, notebook_id, 1]` | teng-lin | jacob-bd/roomi: 5 campos, sin notebook_id |
+| Conversación nueva | `conv_id=None` → el servidor continúa la del notebook (visible en la web); id **real** con `hPTbtc` después | teng-lin (#659, live) | jacob-bd/roomi: UUID inventado → turnos fantasma |
+| Sin id tras responder | Devolver respuesta + `warning`, sin inventar id | propio (teng-lin lanza error; aquí se prioriza no perder la respuesta) | — |
+| Seguimiento explícito | `conv_id` + historial de turnos del proceso | teng-lin `ConversationCache` | — |
+| Qué fragmento es la respuesta | Final del servidor (`inner[4]`) > respuesta más larga > texto sin marcar | teng-lin (#2122) | jacob-bd/roomi: solo "la más larga" |
+| Marca de respuesta | `first[4][4] == 1` | teng-lin | roomi/jacob-bd: último elemento de `[4]` |
+| ID de fuente en cita | Primer UUID dentro de `detalle[5]` | teng-lin | ruta fija `[5][0][0][0]` |
+| Texto citado | Elementos en `detalle[4][0]` → párrafo → `[inicio, fin, [texto]]`; tablas "[tabla]" | teng-lin (#2120: antes 37 de 556 chars) | — |
+| Numeración de citas | Posición 1-based con huecos si una cita está rota | teng-lin = jacob-bd | — |
+| Score | 0–1, descartando bool/NaN/fuera de rango | teng-lin | — |
+| Cuota agotada | `UserDisplayableError` o stream cortado sin payload → `NOTEBOOK_LIMIT` (429, reintentable) | teng-lin | roomi: código numérico suelto |
+| Pregunta demasiado larga | status 3 → mensaje "acórtala" | teng-lin (#1472) | — |
+| Marco `er` / forma desconocida | Error explícito / drift, nunca respuesta vacía silenciosa | teng-lin | — |
+| CSRF renovado | Reconstruir el cuerpo con el token nuevo al reintentar | propio (bug de nuestra Fase 1) | — |
+
+**Pendiente (no implementado aún):** `authuser` para multi-cuenta (teng-lin), sugerencias de
+siguiente pregunta (`inner[5]`), número de turno vía `khqZz`, forzar conversación nueva
+(teng-lin: borrar la conversación; nunca inventar id), anclas de cita dentro del texto.
+
 ## 5. Decisiones que esto fija para notebooklm-hub
 
 1. **Base de diseño = patrón de teng-lin** (`client → _app → fachadas`), reimplementado limpio.
