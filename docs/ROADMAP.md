@@ -42,7 +42,10 @@ Objetivo: una operación de punta a punta por MCP y REST.
       verificación), `source_rename` (verificado releyendo).
 - [x] **Fase A (bloque 3):** `research_start` / `research_status` / `research_import` (Fast y Deep,
       con informe, reconciliación e importación idempotente). **Fase A completa.**
-- [ ] **Fase B:** motor (estado SQLite + snapshot + reglas + runner) — `docs/design/motor-inteligente.md`
+- [x] **Fase B (motor):** almacén SQLite portable, foto del cuaderno (solo lectura), reglas,
+      ejecutor de workflows (aprobación con alcance, presupuesto de tiempo, reanudar tras reinicio,
+      bloqueo ante escrituras dudosas) + tool `notebook_state`.
+- [ ] **Fase C:** receta R3 (método de las 3 notas) + tool de entrada `notebook_assist`
 - [ ] notebooks restantes (create/rename/delete+confirm)
 - [ ] sources (add url/text/file/drive, list, read paginado, delete+confirm, wait)
 - [ ] studio (generate async → status → download; audio/vídeo/report/infografía/slides +
