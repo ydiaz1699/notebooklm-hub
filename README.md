@@ -9,6 +9,9 @@
 
 ---
 
+> 🧭 **¿Retomas el trabajo en un chat nuevo?** Empieza por [`docs/TRASPASO.md`](docs/TRASPASO.md):
+> estado actual, reglas, contrato del motor y siguiente paso.
+
 ## Qué es y para qué sirve
 
 - **Para un LLM/agente** (Kiro, Claude, Cursor, Codex…): un **servidor MCP** con tools para
