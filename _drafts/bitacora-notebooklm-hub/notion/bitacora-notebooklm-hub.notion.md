@@ -1,16 +1,16 @@
 # Bitácora técnica: NotebookLM Hub
 
-<aside>
-📁 **Proyecto** · ✅ Publicado en GitHub
+> 📁 **Proyecto** · ✅ Publicado en GitHub
 
-**Repositorio:** `ydiaz1699/notebooklm-hub`
-**Rama:** `main`
-**Último commit:** `e5e9683`
-**Auditoría Gitleaks:** Sin filtraciones detectadas.
-**Estado Git:** Working tree clean.
+- **Repositorio:** `ydiaz1699/notebooklm-hub`
+- **Rama:** `main`
+- **Último commit:** `e5e9683`
+- **Auditoría Gitleaks:** Sin filtraciones detectadas.
+- **Estado Git:** Working tree clean.
 
 *Registro de los trabajos realizados durante esta conversación.*
-</aside>
+
+---
 
 ## 1. Objetivo del trabajo
 
@@ -23,9 +23,7 @@ Incorporar el proyecto NotebookLM al repositorio `notebooklm-hub`, conservando s
 
 ## 2. Primer problema: archivo `auth.json`
 
-<aside>
-🚨 `_drafts/notebooklm/auth.json` contiene datos de autenticación y no debía publicarse. Git lo seguía mostrando como `?? _drafts/notebooklm/auth.json`.
-</aside>
+> 🚨 `_drafts/notebooklm/auth.json` contiene datos de autenticación y no debía publicarse. Git lo seguía mostrando como `?? _drafts/notebooklm/auth.json`.
 
 **Solución**
 
@@ -39,9 +37,7 @@ git check-ignore -v _drafts/notebooklm/auth.json
 .gitignore:46:/_drafts/notebooklm/auth.json
 ```
 
-<aside>
-✅ **Problema solucionado.** El archivo quedó excluido de Git y sigue disponible localmente.
-</aside>
+> ✅ **Problema solucionado.** El archivo quedó excluido de Git y sigue disponible localmente.
 
 ## 3. Segundo problema: protección insuficiente de credenciales
 
@@ -73,9 +69,7 @@ git ls-files | grep -Ei '\.(pem|key|p12|pfx)$'
 git ls-files _drafts/notebooklm/auth.json
 ```
 
-<aside>
-ℹ️ Sin coincidencias en las tres comprobaciones.
-</aside>
+> ℹ️ Sin coincidencias en las tres comprobaciones.
 
 ## 5. Cuarto trabajo: incorporación del proyecto NotebookLM
 
@@ -86,9 +80,7 @@ git commit -m "Add notebooklm draft project"   # [main 9336197] 366 files change
 git push origin main                           # 848b4ef..9336197  main -> main
 ```
 
-<aside>
-✅ **Publicación exitosa**
-</aside>
+> ✅ **Publicación exitosa**
 
 ## 6. Quinto problema: reglas en el `.gitignore` interno
 
@@ -100,9 +92,7 @@ git push origin main                           # 848b4ef..9336197  main -> main
 /_drafts/notebooklm/cookies*.json
 ```
 
-<aside>
-⚠️ Un `.gitignore` interpreta sus patrones respecto a su propia carpeta. Dentro de `_drafts/notebooklm/`, el prefijo `/_drafts/notebooklm/` no apunta a nada, así que estas reglas **no tienen efecto**. La protección real viene del `.gitignore` raíz.
-</aside>
+> ⚠️ Un `.gitignore` interpreta sus patrones respecto a su propia carpeta. Dentro de `_drafts/notebooklm/`, el prefijo `/_drafts/notebooklm/` no apunta a nada, así que estas reglas **no tienen efecto**. La protección real viene del `.gitignore` raíz.
 
 ## 7. Segundo commit y publicación
 
@@ -140,16 +130,14 @@ INF scanned ~4233366 bytes (4.23 MB) in 838ms
 INF no leaks found
 ```
 
-<aside>
-🛡️ **Auditoría Gitleaks** · ✅ Superada
+> 🛡️ **Auditoría Gitleaks** · ✅ Superada — **0 filtraciones detectadas**
 
-### 0 filtraciones detectadas
-
-**12** — Commits examinados
-**4.23 MB** — Datos analizados
-**838 ms** — Tiempo de análisis
-**0** — Secretos detectados
-</aside>
+| Métrica | Valor |
+| --- | --- |
+| Commits examinados | **12** |
+| Datos analizados | **4.23 MB** |
+| Tiempo de análisis | **838 ms** |
+| Secretos detectados | **0** |
 
 > Gitleaks no encontró nada que coincida con sus patrones; no garantiza que no exista una credencial que sus reglas no reconozcan.
 
@@ -190,9 +178,7 @@ git push origin main
 git status
 ```
 
-<aside>
-⚠️ Antes de `git add .` revisa qué incorporas: las comprobaciones por nombre no detectan secretos dentro de código o configuración.
-</aside>
+> ⚠️ Antes de `git add .` revisa qué incorporas: las comprobaciones por nombre no detectan secretos dentro de código o configuración.
 
 ## 14. Recomendaciones pendientes
 
@@ -203,6 +189,4 @@ git status
 
 ## Conclusión
 
-<aside>
-✅ Proyecto incorporado, `auth.json` excluido, reglas ampliadas, dos commits publicados y Gitleaks sin filtraciones. Repositorio sincronizado y limpio.
-</aside>
+> ✅ Proyecto incorporado, `auth.json` excluido, reglas ampliadas, dos commits publicados y Gitleaks sin filtraciones. Repositorio sincronizado y limpio.
