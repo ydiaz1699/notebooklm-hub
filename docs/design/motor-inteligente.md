@@ -1,6 +1,7 @@
 # Diseño: MCP inteligente (motor de decisiones + workflows)
 
-**Estado:** propuesta, pendiente de aprobación. Nada de esto está implementado todavía.
+**Estado:** fase A (capacidades) y fase B (motor: `src/notebooklm_hub/_app/engine/`) implementadas;
+falta la fase C (primer workflow R3 + `notebook_assist`).
 **Fecha:** 2026-10-29.
 
 ## 1. Objetivo real
@@ -130,7 +131,10 @@ de una interfaz `InternalLLM` como **extra opcional** (`.[llm]`), proveedor inte
   sugiere dos pasos.
 - Soporte de **elicitation** en Kiro CLI / Kiro Web / Claude Desktop.
 - Límite de etiquetas o de mapas por cuaderno y la cuota de NotebookLM.
-- Dónde guardar el SQLite en el NAS (fuera del repo; ruta configurable por variable de entorno).
+- ~~Dónde guardar el SQLite~~ **Decidido (2026-10-29):** portable, sin depender del framework del
+  NAS. `NOTEBOOKLM_HUB_STATE_DIR` o, por defecto, la carpeta de estado del sistema
+  (`~/.local/state/notebooklm-hub` en Linux, `~/Library/Application Support/notebooklm-hub` en
+  macOS, `%LOCALAPPDATA%\notebooklm-hub` en Windows). Perfil con `NOTEBOOKLM_HUB_PROFILE`.
 
 ## 10. Tus notas, clasificadas (regla "no se borra, se fusiona")
 

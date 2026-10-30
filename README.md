@@ -112,6 +112,14 @@ curl -s localhost:9420/tools/notebook_ask \
 
 # O por MCP (para Kiro/Claude/Cursor): registrar el comando `nlmhub-mcp` como servidor MCP stdio.
 ```
+Variables opcionales del motor inteligente (estado y recomendaciones):
+
+| Variable | Para qué | Por defecto |
+|---|---|---|
+| `NOTEBOOKLM_HUB_STATE_DIR` | Carpeta de la base de estado (SQLite). Nunca guarda cookies | carpeta de estado del sistema (`~/.local/state/notebooklm-hub` en Linux) |
+| `NOTEBOOKLM_HUB_PROFILE` | Separar el estado si usas varias cuentas | `default` |
+| `NOTEBOOKLM_HUB_MANY_SOURCES` / `NOTEBOOKLM_HUB_FEW_SOURCES` | Umbrales de las recomendaciones | `10` / `2` |
+
 Si el transporte web falla por un cambio de Google (RPC drift), ver la tabla de mantenimiento en
 [`docs/transport/README.md`](docs/transport/README.md) y el override `NOTEBOOKLM_HUB_RPC_OVERRIDES`.
 
