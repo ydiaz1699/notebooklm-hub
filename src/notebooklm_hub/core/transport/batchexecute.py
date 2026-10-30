@@ -27,13 +27,27 @@ from urllib.parse import quote
 
 import httpx
 
-from .base import RpcRefusedError, Transport, TransportError, TransportResult
+from .base import (
+    RpcRefusedError,
+    Transport,
+    TransportError,
+    TransportResult,
+    UnconfirmedWriteError,
+)
 from .web_chat import (
     build_history,
     build_query_params,
     parse_chat_stream,
     unwrap_last_conversation_id,
 )
+from .web_labels import (
+    build_assign_source_params,
+    build_generate_labels_params,
+    build_list_labels_params,
+    parse_label_set,
+)
+from .web_settings import build_configure_params, build_rename_source_params, parse_chat_settings
+from .web_sources import build_add_text_params, parse_added_source
 
 DEFAULT_HOST = "notebooklm.google.com"
 BATCH_ENDPOINT = "/_/LabsTailwindUi/data/batchexecute"
@@ -58,6 +72,11 @@ _RPC_IDS = {
     "GET_SOURCE": "hizoJc",
     "DELETE_SOURCE": "tGMBJ",
     "GET_LAST_CONVERSATION_ID": "hPTbtc",   # teng-lin rpc/_identifiers.py
+    "LIST_LABELS": "I3xc3c",                # solo lectura (teng-lin; jacob-bd no lo tiene)
+    "CREATE_LABEL": "agX4Bc",               # autoetiquetado IA / crear
+    "UPDATE_LABEL": "le8sX",                # renombrar / asignar fuente
+    "RENAME_NOTEBOOK": "s0tc2d",            # MutateProject: título y ajustes del chat
+    "UPDATE_SOURCE": "b7Wfje",              # MutateSource: renombrar fuente
 }
 
 # Códigos gRPC estándar que el backend pone en el índice 5 del envelope al rechazar.
@@ -89,7 +108,7 @@ def parse_batchexecute(text: str, rpc_id: str) -> Any:
     Pura (sin red), unit-testable. Devuelve None si el envelope existe pero está vacío;
     lanza TransportError si hay drift (ningún envelope para el id) o refusal (status gRPC).
     """
-    body = text[4:] if text.startswith(")]}'") else text
+    body = text.removeprefix(")]}'")
     for raw in body.split("\n"):
         line = raw.strip()
         if not line or not line.startswith("["):
@@ -277,15 +296,22 @@ class BatchExecuteTransport:
         self._bl = bl.group(1) if bl else self._bl
         self._ready = True
 
-    _OPERATIONS = ("ask", "list_notebooks", "get_notebook")
+    _OPERATIONS = ("ask", "list_notebooks", "get_notebook", "list_labels", "generate_labels",
+                   "assign_source_to_label", "add_text_source", "get_chat_settings",
+                   "configure_chat", "rename_source")
 
     async def call(self, operation: str, **params: Any) -> TransportResult:
-        """Operaciones: 'ask', 'list_notebooks', 'get_notebook'. Devuelven datos ya parseados."""
+        """Ejecuta una operación y devuelve datos ya parseados (ver _OPERATIONS)."""
         if operation not in self._OPERATIONS:
             raise TransportError(f"operación '{operation}' no implementada aún en batchexecute",
                                  retriable=False)
         async with httpx.AsyncClient(timeout=120) as client:
             await self._bootstrap(client)
+            if operation in ("list_labels", "generate_labels", "assign_source_to_label",
+                             "add_text_source", "get_chat_settings", "configure_chat",
+                             "rename_source"):
+                data = await self._write_or_label_op(client, operation, **params)
+                return TransportResult(data=data, backend=self.name)
             if operation == "list_notebooks":
                 # Params de la web: [null, 1, null, [2]]
                 payload = await self._rpc(client, "LIST_NOTEBOOKS", [None, 1, None, [2]])
@@ -309,6 +335,82 @@ class BatchExecuteTransport:
                 data = await self._ask(client, nb_id, params["question"], source_ids,
                                        params.get("conversation_id"))
             return TransportResult(data=data, backend=self.name)
+
+    async def _write_or_label_op(self, client: httpx.AsyncClient, operation: str,
+                                 **p: Any) -> Any:
+        nb_id = p["notebook_id"]
+        path = f"/notebook/{nb_id}"
+        if operation == "list_labels":
+            payload = await self._rpc(client, "LIST_LABELS", build_list_labels_params(nb_id),
+                                      source_path=path)
+            return parse_label_set(payload, index=0)
+        if operation == "generate_labels":
+            payload = await self._rpc(client, "CREATE_LABEL",
+                                      build_generate_labels_params(nb_id, p["scope"]),
+                                      source_path=path)
+            return parse_label_set(payload, index=1)      # devuelve el conjunto completo
+        if operation == "assign_source_to_label":
+            await self._rpc(client, "UPDATE_LABEL",
+                            build_assign_source_params(nb_id, p["label_id"], p["source_id"]),
+                            source_path=path)
+            return {"label_id": p["label_id"], "source_id": p["source_id"]}
+        if operation == "get_chat_settings":
+            payload = await self._rpc(client, "GET_NOTEBOOK", [nb_id, None, [2], None, 0],
+                                      source_path=path)
+            if not (isinstance(payload, list) and payload):
+                return None                               # notebook inexistente
+            return parse_chat_settings(payload[0])
+        if operation == "configure_chat":
+            await self._rpc(client, "RENAME_NOTEBOOK",
+                            build_configure_params(nb_id, goal=p["goal"],
+                                                   response_length=p["response_length"],
+                                                   custom_prompt=p.get("custom_prompt")),
+                            source_path=path)
+            return {"ok": True}
+        if operation == "rename_source":
+            await self._rpc(client, "UPDATE_SOURCE",
+                            build_rename_source_params(p["source_id"], p["title"]),
+                            source_path=path)
+            return {"source_id": p["source_id"], "title": p["title"]}
+        # add_text_source
+        title, content = p["title"], p["content"]
+        try:
+            payload = await self._rpc(client, "ADD_SOURCE",
+                                      build_add_text_params(nb_id, title, content),
+                                      source_path=path)
+        except (RpcRefusedError, TransportError, httpx.HTTPError) as exc:
+            # Escritura dudosa: el servidor puede haberla creado aunque responda 3/9 o se corte
+            # la conexión. Comprobar por título ANTES de fallar (jacob-bd _reconcile_source),
+            # para no duplicar si el llamador reintenta.
+            if isinstance(exc, RpcRefusedError) and exc.status not in (3, 9):
+                raise
+            found = await self._find_source_by_title(client, nb_id, title)
+            if found:
+                return {**found, "reconciled": True}
+            raise UnconfirmedWriteError(
+                f"No se pudo confirmar si se creó la fuente '{title}' ({exc}). Revisa el "
+                "cuaderno antes de reintentar para no duplicarla.") from exc
+        added = parse_added_source(payload, title)
+        if added is None:
+            found = await self._find_source_by_title(client, nb_id, title)
+            if found:
+                return {**found, "reconciled": True}
+            raise UnconfirmedWriteError(
+                f"ADD_SOURCE respondió con un formato no reconocido (drift) y la fuente '{title}' "
+                "no aparece al releer. Revisa el cuaderno antes de reintentar.")
+        return {**added, "reconciled": False}
+
+    async def _find_source_by_title(self, client: httpx.AsyncClient, nb_id: str,
+                                    title: str) -> dict[str, Any] | None:
+        try:
+            payload = await self._rpc(client, "GET_NOTEBOOK", [nb_id, None, [2], None, 0],
+                                      source_path=f"/notebook/{nb_id}")
+        except (RpcRefusedError, TransportError, httpx.HTTPError):
+            return None
+        detail = parse_notebook_detail(payload) or {}
+        matches = [s for s in detail.get("sources", []) if s["title"].strip() == title.strip()]
+        # Solo se da por hecha si hay EXACTAMENTE una con ese título (si hay varias, no se adivina).
+        return dict(matches[0]) if len(matches) == 1 else None
 
     async def _rpc(self, client: httpx.AsyncClient, name: str, rpc_params: Any,
                    *, source_path: str = "/") -> Any:

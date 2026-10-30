@@ -45,8 +45,10 @@ class ClassifiedError:
 def classify(exc: Exception) -> ClassifiedError:
     """Mapea una excepción a una categoría neutral. Único sitio de la decisión de categoría."""
     from ..core.auth import AuthError
-    from ..core.transport.base import RpcRefusedError, TransportError
+    from ..core.transport.base import RpcRefusedError, TransportError, UnconfirmedWriteError
 
+    if isinstance(exc, UnconfirmedWriteError):
+        return ClassifiedError(Category.SOURCE_ADD, str(exc), retriable=False)
     if isinstance(exc, RpcRefusedError):
         category = {5: Category.NOT_FOUND, 7: Category.PERMISSION_DENIED,
                     8: Category.NOTEBOOK_LIMIT}.get(exc.status, Category.UNKNOWN)

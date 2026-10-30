@@ -36,6 +36,16 @@ class RpcRefusedError(Exception):
         self.label = label
 
 
+class UnconfirmedWriteError(Exception):
+    """Una ESCRITURA se envió pero no se pudo confirmar si se aplicó (se cortó la conexión,
+    respuesta dudosa) y tampoco se encontró al releer.
+
+    No es TransportError a propósito: la cascada NO debe reenviarla por otro transporte (crearía
+    duplicados). Hay que revisar el cuaderno antes de reintentar (patrón teng-lin
+    call_unconfirmed_on_transport_loss).
+    """
+
+
 @dataclass(frozen=True)
 class TransportResult:
     """Respuesta cruda normalizada que devuelve cualquier transporte."""

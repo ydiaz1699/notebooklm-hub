@@ -95,6 +95,11 @@ Cada paso declara: precondición, acción, verificación, si necesita aprobació
 reintentarlo. Añadir otro procedimiento (p. ej. "fuentes nuevas → reclasificar → regenerar mapas
 afectados") es añadir un archivo en `workflows/`, sin tocar el motor.
 
+### Recetas concretas
+
+Los procedimientos reales (configurar chat, Deep Research, **método de las 3 notas**, **mapa de
+cobertura**) y las reglas que deciden cuál toca están en [`recetas.md`](recetas.md).
+
 ## 6. Plan B si el cliente no soporta elicitation
 
 `notebook_assist` devuelve `requiere_aprobacion: true` + el plan, y el LLM se lo pregunta al

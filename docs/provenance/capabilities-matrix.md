@@ -191,6 +191,41 @@ Implementado en `core/transport/web_chat.py` (funciones puras).
 | Marco `er` / forma desconocida | Error explícito / drift, nunca respuesta vacía silenciosa | teng-lin | — |
 | CSRF renovado | Reconstruir el cuerpo con el token nuevo al reintentar | propio (bug de nuestra Fase 1) | — |
 
+**Etiquetas + fuente de texto** (Fase A del motor inteligente — 2026-10-29).
+Comparados: teng-lin (`_web/params/labels.py`, `_web/rows/labels.py`, `_web/labels.py`,
+`_web/sources/add.py`, `_web/params/sources.py`, `_web/rows/sources.py`), jacob-bd
+(`core/labels.py`, `core/sources.py:add_text_source`). roomi/ishandutta no tienen etiquetas.
+
+| Detalle | Elegido | De | Descartado |
+|---|---|---|---|
+| Leer etiquetas | `LIST_LABELS` (`I3xc3c`), **solo lectura** | teng-lin | jacob-bd `list_labels` → autoetiqueta si no hay (leer modifica) |
+| Envoltorio de opciones | `[2, None, None, [1, …, [1]]]` | teng-lin | jacob-bd `[2]` |
+| Autoetiquetar | `[False]` = solo fuentes sin etiqueta (incremental, por defecto) | teng-lin | jacob-bd `[]`/`[0]` |
+| Rehacer todas | `[True]`, tool aparte **destructiva** (`label_reorganize`, pide `confirm`) | teng-lin (la CLI lo protege con `--yes`) | — |
+| Forma de la etiqueta | `[nombre, [[id]…] \| None, id, emoji]`; vacía = legítimo; rara = drift | ambos coinciden; teng-lin estricto | jacob-bd: ignora filas raras en silencio |
+| Asignar fuente | `UPDATE_LABEL` `[opts, nb, label, [[None, [[src]]]]]`, un id por llamada; idempotente (si ya está, no llama) | teng-lin + propio | — |
+| Fuente de texto: campos | 11 `[None, [título, texto], None, 2, None×6, 1]` | ambos coinciden | — |
+| Fuente de texto: opciones | Anidado `[2, None, None, [1,…]]` | teng-lin #1546 (live: la forma plana se rechaza con 3/5/9) | jacob-bd: plano `[2], [1,…]` |
+| Respuesta de ADD_SOURCE | 3 formas (profunda/media/plana) | teng-lin `from_unknown_shape` | jacob-bd: solo una |
+| Escritura dudosa (status 3/9, corte de conexión, formato raro) | Releer el cuaderno y buscar **una** fuente con ese título → `reconciled=true` | jacob-bd `_reconcile_source` | — |
+| Dudosa y no encontrada | `UnconfirmedWriteError`: la cascada **no** la reenvía por otro transporte | teng-lin `call_unconfirmed_on_transport_loss` | — |
+
+**Personalización del chat + renombrar fuente** (Fase A — 2026-10-29).
+Comparados: teng-lin (`_web/chat.py:_send_configure/_read_settings`, `_web/rows/chat.py:unwrap_chat_settings`,
+`_chat.py:configure`, `_web/params/sources.py:build_rename_source_params`, `_web/sources/__init__.py:rename`),
+jacob-bd (`core/notebooks.py:configure_chat`, `core/sources.py:rename_source`).
+
+| Detalle | Elegido | De | Descartado |
+|---|---|---|---|
+| Escribir ajustes | `RENAME_NOTEBOOK` (`s0tc2d`) con `[[objetivo, prompt?], [longitud]]` en `params[1][0][7]` | ambos coinciden | — |
+| Leer ajustes | `GET_NOTEBOOK` fila `[7]`; `[[], []]` y `null` = por defecto; forma rara = drift | teng-lin (#1751, live) | jacob-bd: no tiene lectura |
+| Cambiar solo una parte | Leer → mezclar → escribir (la escritura reemplaza todo) | teng-lin `_app.chat.execute_configure` | jacob-bd: escribe directo y resetea lo no indicado |
+| Solo `custom_prompt` | Implica objetivo `custom`, conserva la longitud | propio | — |
+| Verificación | Releer tras escribir; si no coincide → `UnconfirmedWriteError`; devolver `previous` para deshacer | propio | — |
+| Códigos | objetivo 1/2/3, longitud 1/4/5, prompt ≤ 10 000 | teng-lin = jacob-bd | — |
+| Renombrar fuente | `UPDATE_SOURCE` (`b7Wfje`) `[None, [id], [[[título]]]]` | ambos coinciden | — |
+| Fuente inexistente al renombrar | Comprobar antes y releer después (el servidor no da error) | teng-lin (miss-detection por relectura) | jacob-bd: confía en el eco |
+
 **Pendiente (no implementado aún):** `authuser` para multi-cuenta (teng-lin), sugerencias de
 siguiente pregunta (`inner[5]`), número de turno vía `khqZz`, forzar conversación nueva
 (teng-lin: borrar la conversación; nunca inventar id), anclas de cita dentro del texto.
