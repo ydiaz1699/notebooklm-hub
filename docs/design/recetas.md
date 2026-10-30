@@ -6,7 +6,7 @@
 ## 1. La idea
 
 Hoy, para sacarle todo el partido a NotebookLM hay que **acordarse** de aplicar ciertos métodos y
-**pegar los prompts a mano** en cada cuaderno (vídeo de IA MASIVA + `_drafts/prompt/`). Es
+**pegar los prompts a mano** en cada cuaderno (vídeo + prompts de `_drafts/prompt/`; créditos en [`CREDITS.md`](../../CREDITS.md)). Es
 agotador y fácil de olvidar.
 
 Con el motor inteligente:
@@ -18,8 +18,8 @@ Con el motor inteligente:
 
 ## 2. Las 4 recetas
 
-Origen: vídeo "3 cosas de Gemini Notebook" + recursos de IA MASIVA en `_drafts/prompt/1` y
-`_drafts/prompt/2`.
+Origen: vídeo "3 cosas de Gemini Notebook" + `_drafts/prompt/1` y `_drafts/prompt/2`
+(créditos en [`CREDITS.md`](../../CREDITS.md)).
 
 ### R1 · `configurar_chat` (vídeo, punto 1)
 - **Qué hace:** pone la personalización del chat del cuaderno (objetivo, tono y formato,
@@ -138,10 +138,9 @@ Todas existen en los repos de referencia; antes de implementarlas se compararán
 
 ## 7. Procedencia y licencia de los prompts
 
-Los prompts son de **IA MASIVA** (recursos de su web), aportados en `_drafts/prompt/`.
-**Decisión (2026-10-29):** se pueden redistribuir — el autor del repo colabora con IA MASIVA.
-Al copiarlos a `src/notebooklm_hub/_app/recipes/prompts/` cada archivo llevará una cabecera de
-atribución (`Autor: IA MASIVA · origen: <recurso>`) y el README citará la procedencia.
+Los prompts se pueden redistribuir (colaboración del autor con quien los creó; decisión del
+2026-10-29). **Los archivos de prompt no llevan cabecera de atribución**: los créditos de todos
+los contribuyentes están en un único archivo, [`CREDITS.md`](../../CREDITS.md).
 
 ## 8. Orden de trabajo propuesto
 

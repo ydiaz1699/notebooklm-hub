@@ -38,3 +38,9 @@ uv venv && uv pip install -e ".[dev]"
 uv run pytest
 ```
 CPython (no PyPy — ver `docs/ARCHITECTURE.md`).
+
+## Créditos
+
+Ningún archivo (código, prompts, documentación) lleva cabecera de autor o atribución. Si incorporas
+ideas, prompts o contenido de alguien, añade una fila en [`CREDITS.md`](CREDITS.md) indicando qué
+aporta, dónde se usa y su licencia o permiso.
