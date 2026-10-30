@@ -168,9 +168,32 @@ jacob-bd (`core/notebooks.py`, `core/conversation.py`), roomi (no aplica: lo hac
 | `ask` sin fuentes | `GET_NOTEBOOK` → todas las fuentes | jacob-bd = teng-lin | (nuestra Fase 1: lista vacía) |
 | Nombre ambiguo | No adivinar → `AMBIGUOUS` con candidatos | teng-lin (convención name-or-ID) | — |
 
-**Pendiente de comparar a fondo antes de implementar:** `ask` completo (citas, seguimiento de
-conversación, `chat_sessions` en `[11]`) — teng-lin `_chat.py` vs jacob-bd `conversation.py` vs
-roomi `query-rpc.ts` (citas al 97 %).
+**Chat: `ask` (respuesta, citas, conversación)** (Fase 3 — 2026-10-29).
+Comparados: teng-lin (`_chat.py`, `_web/params/chat_stream.py`, `_web/rows/chat_stream.py`,
+`_web/rows/chat.py`, `_web/rows/documents.py`), jacob-bd (`core/conversation.py`), roomi
+(`src/rpc/query-rpc.ts`). Resultado: roomi es una variante de jacob-bd; teng-lin gana en todo.
+Implementado en `core/transport/web_chat.py` (funciones puras).
+
+| Detalle | Elegido | De | Descartado |
+|---|---|---|---|
+| Campos de la petición | 9: `[fuentes, pregunta, historial, [2,None,[1],[1]], conv_id, None, None, notebook_id, 1]` | teng-lin | jacob-bd/roomi: 5 campos, sin notebook_id |
+| Conversación nueva | `conv_id=None` → el servidor continúa la del notebook (visible en la web); id **real** con `hPTbtc` después | teng-lin (#659, live) | jacob-bd/roomi: UUID inventado → turnos fantasma |
+| Sin id tras responder | Devolver respuesta + `warning`, sin inventar id | propio (teng-lin lanza error; aquí se prioriza no perder la respuesta) | — |
+| Seguimiento explícito | `conv_id` + historial de turnos del proceso | teng-lin `ConversationCache` | — |
+| Qué fragmento es la respuesta | Final del servidor (`inner[4]`) > respuesta más larga > texto sin marcar | teng-lin (#2122) | jacob-bd/roomi: solo "la más larga" |
+| Marca de respuesta | `first[4][4] == 1` | teng-lin | roomi/jacob-bd: último elemento de `[4]` |
+| ID de fuente en cita | Primer UUID dentro de `detalle[5]` | teng-lin | ruta fija `[5][0][0][0]` |
+| Texto citado | Elementos en `detalle[4][0]` → párrafo → `[inicio, fin, [texto]]`; tablas "[tabla]" | teng-lin (#2120: antes 37 de 556 chars) | — |
+| Numeración de citas | Posición 1-based con huecos si una cita está rota | teng-lin = jacob-bd | — |
+| Score | 0–1, descartando bool/NaN/fuera de rango | teng-lin | — |
+| Cuota agotada | `UserDisplayableError` o stream cortado sin payload → `NOTEBOOK_LIMIT` (429, reintentable) | teng-lin | roomi: código numérico suelto |
+| Pregunta demasiado larga | status 3 → mensaje "acórtala" | teng-lin (#1472) | — |
+| Marco `er` / forma desconocida | Error explícito / drift, nunca respuesta vacía silenciosa | teng-lin | — |
+| CSRF renovado | Reconstruir el cuerpo con el token nuevo al reintentar | propio (bug de nuestra Fase 1) | — |
+
+**Pendiente (no implementado aún):** `authuser` para multi-cuenta (teng-lin), sugerencias de
+siguiente pregunta (`inner[5]`), número de turno vía `khqZz`, forzar conversación nueva
+(teng-lin: borrar la conversación; nunca inventar id), anclas de cita dentro del texto.
 
 ## 5. Decisiones que esto fija para notebooklm-hub
 

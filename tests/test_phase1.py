@@ -11,7 +11,8 @@ import pytest
 from notebooklm_hub._app.ask import AskRequest, build_ask_plan, execute_ask
 from notebooklm_hub._app.errors import Category, classify
 from notebooklm_hub.core.transport.base import TransportError, TransportResult
-from notebooklm_hub.core.transport.batchexecute import parse_batchexecute, parse_query_response
+from notebooklm_hub.core.transport.batchexecute import parse_batchexecute
+from notebooklm_hub.core.transport.web_chat import parse_chat_stream
 from notebooklm_hub.tools.registry import discover_tools
 
 
@@ -54,9 +55,12 @@ def test_parse_batchexecute_unauthenticated_is_transport():
     assert e.value.retriable is True
 
 
-def test_parse_query_response_picks_longest_string():
-    body = ")]}'\n" + json.dumps([["wrb.fr", "x", json.dumps(["corto", "esta es la respuesta larga del notebook"])]])
-    assert parse_query_response(body)["answer"] == "esta es la respuesta larga del notebook"
+def test_parse_chat_stream_prefers_marked_answer_over_longer_thinking():
+    # el fragmento marcado como respuesta ([4][4] == 1) gana aunque el "pensando" sea más largo
+    def env(text, marker):
+        return json.dumps(["wrb.fr", None, json.dumps([[text, None, None, None, [0, 0, 0, None, marker]]])])
+    body = ")]}'\n" + f"[{env('pensando muy largo ' * 5, 0)}]\n[{env('la respuesta', 1)}]"
+    assert parse_chat_stream(body)["answer"] == "la respuesta"
 
 
 # ---- verbo ask (neutral) ----
@@ -76,7 +80,7 @@ class _FakeClient:
     async def list_notebooks(self):
         return [{"id": _NB_ID, "title": "mi-nb"}]
 
-    async def ask(self, notebook_id, question, source_ids=None):
+    async def ask(self, notebook_id, question, source_ids=None, conversation_id=None):
         return {"answer": "respuesta de prueba", "conversation_id": "c1", "notebook_id": notebook_id}
 
 

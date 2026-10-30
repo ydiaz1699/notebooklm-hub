@@ -34,6 +34,8 @@ Objetivo: una operación de punta a punta por MCP y REST.
 - [x] **Fix de `ask`:** sin `source_ids` enviaba la lista de fuentes vacía; ahora pide antes
       `GET_NOTEBOOK` y pregunta a todas las fuentes (comportamiento de la web, verificado en jacob-bd).
 - [x] suite 33/33 (incluye transporte contra servidor HTTP simulado). Pendiente run real (igual que Fase 1).
+- [x] **`ask` completo (mejor de los 7):** citas con fuente/texto/score, conversación real
+      (visible en la web), seguimientos con `conversation_id`, errores de cuota/rechazo claros.
 - [ ] notebooks restantes (create/rename/delete+confirm)
 - [ ] sources (add url/text/file/drive, list, read paginado, delete+confirm, wait)
 - [ ] studio (generate async → status → download; audio/vídeo/report/infografía/slides +

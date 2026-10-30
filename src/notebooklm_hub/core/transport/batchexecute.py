@@ -6,7 +6,8 @@ de query `GenerateFreeFormStreamed`. 10-100x más rápido que raspar el DOM e in
 El protocolo (endpoint, armado de `f.req`, prefijo anti-XSSI `)]}'`, parseo de envelopes `wrb.fr`,
 drift vs refusal, bootstrap de tokens SNlM0e/FdrFJe/cfb2h) está destilado y portado de la impl de
 referencia `roomi-fields/notebooklm-mcp` (MIT) y `jacob-bd/gemini-notebook-mcp-cli` (MIT), verificado
-contra su código el 2026-10-04. Ver docs/transport/README.md.
+contra su código el 2026-10-04. Ver docs/transport/README.md. El chat (petición de 9 campos, respuesta
+y citas) vive en web_chat.py, basado en teng-lin (la mejor de las 7 para esa parte).
 
 ⚠️ Google rota estos endpoints/ids sin aviso. Si un id deja de responder, parchear en caliente con
    NOTEBOOKLM_HUB_RPC_OVERRIDES='{"LIST_NOTEBOOKS":"<nuevo-id>"}'  (no hace falta release).
@@ -20,7 +21,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote
@@ -28,6 +28,12 @@ from urllib.parse import quote
 import httpx
 
 from .base import RpcRefusedError, Transport, TransportError, TransportResult
+from .web_chat import (
+    build_history,
+    build_query_params,
+    parse_chat_stream,
+    unwrap_last_conversation_id,
+)
 
 DEFAULT_HOST = "notebooklm.google.com"
 BATCH_ENDPOINT = "/_/LabsTailwindUi/data/batchexecute"
@@ -51,6 +57,7 @@ _RPC_IDS = {
     "ADD_SOURCE": "izAoDd",
     "GET_SOURCE": "hizoJc",
     "DELETE_SOURCE": "tGMBJ",
+    "GET_LAST_CONVERSATION_ID": "hPTbtc",   # teng-lin rpc/_identifiers.py
 }
 
 # Códigos gRPC estándar que el backend pone en el índice 5 del envelope al rechazar.
@@ -118,37 +125,6 @@ def parse_batchexecute(text: str, rpc_id: str) -> Any:
         f"Parchea con NOTEBOOKLM_HUB_RPC_OVERRIDES.",
         retriable=False,
     )
-
-
-def parse_query_response(text: str) -> dict[str, Any]:
-    """Parsea la respuesta streamed de query: elige el chunk de respuesta más largo.
-
-    Pura (sin red). Portado de roomi query-rpc.ts parseQueryResponse (forma simplificada
-    para Fase 1: devuelve el texto de la respuesta; las citas detalladas llegan en Fase 3).
-    """
-    body = text[4:] if text.startswith(")]}'") else text
-    longest = ""
-    for raw in body.strip().split("\n"):
-        line = raw.strip()
-        if not line or not line.startswith("["):
-            continue
-        try:
-            chunk = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        # Un chunk es una lista de envelopes. El contenido útil de un envelope wrb.fr viene en el
-        # índice 2 como JSON *string* → hay que decodificarlo antes de buscar el texto.
-        for env in chunk if isinstance(chunk, list) else []:
-            inner = env
-            if isinstance(env, list) and len(env) >= 3 and env[0] == "wrb.fr" and isinstance(env[2], str):
-                try:
-                    inner = json.loads(env[2])
-                except json.JSONDecodeError:
-                    continue
-            candidate = _longest_string(inner)
-            if len(candidate) > len(longest):
-                longest = candidate
-    return {"answer": longest}
 
 
 def build_batch_body(rpc_id: str, rpc_params: Any, csrf: str = "") -> str:
@@ -257,18 +233,6 @@ def parse_notebook_detail(payload: Any) -> dict[str, Any] | None:
     return None
 
 
-def _longest_string(node: Any) -> str:
-    if isinstance(node, str):
-        return node
-    best = ""
-    if isinstance(node, list):
-        for item in node:
-            s = _longest_string(item)
-            if len(s) > len(best):
-                best = s
-    return best
-
-
 class BatchExecuteTransport:
     """Implementa el contrato Transport sobre batchexecute. name='web'."""
 
@@ -283,6 +247,9 @@ class BatchExecuteTransport:
         self._bl = ""
         self._ready = False
         self._reqid = 100000
+        # Turnos (pregunta, respuesta) por conversación hechos en ESTE proceso, para mandar el
+        # historial en los seguimientos explícitos (teng-lin ConversationCache). En memoria.
+        self._turns: dict[str, list[tuple[str, str]]] = {}
 
     def available(self) -> bool:
         return bool(self._cookie)
@@ -329,19 +296,18 @@ class BatchExecuteTransport:
                                           source_path=f"/notebook/{nb_id}")
                 data = parse_notebook_detail(payload)
             else:
+                nb_id = params["notebook_id"]
                 source_ids = params.get("source_ids")
                 if not source_ids:
-                    # Sin fuentes explícitas → TODAS las del notebook. El payload de query NO
-                    # lleva el notebook id: el contexto lo dan las fuentes (verificado en
-                    # jacob-bd conversation.py: get_notebook → _extract_source_ids).
-                    nb_id = params["notebook_id"]
+                    # Sin fuentes explícitas → TODAS las del notebook (igual que la web;
+                    # coinciden jacob-bd y teng-lin get_source_ids).
                     payload = await self._rpc(client, "GET_NOTEBOOK",
                                               [nb_id, None, [2], None, 0],
                                               source_path=f"/notebook/{nb_id}")
                     detail = parse_notebook_detail(payload)
                     source_ids = [s["id"] for s in (detail or {}).get("sources", [])]
-                data = await self._ask(client, params["notebook_id"], params["question"],
-                                       source_ids)
+                data = await self._ask(client, nb_id, params["question"], source_ids,
+                                       params.get("conversation_id"))
             return TransportResult(data=data, backend=self.name)
 
     async def _rpc(self, client: httpx.AsyncClient, name: str, rpc_params: Any,
@@ -370,50 +336,71 @@ class BatchExecuteTransport:
             raise TransportError(f"batchexecute {name} HTTP {res.status_code}", retriable=False)
         return parse_batchexecute(res.text, rpc_id)
 
-    async def _ask(self, client, notebook_id, question, source_ids):
-        sources_array = [[[sid]] for sid in (source_ids or [])]
-        conversation_id = str(uuid.uuid4())
-        inner = [sources_array, question, None, [2, None, [1]], conversation_id]
-        text = await self._post_query_streamed(client, inner)
-        parsed = parse_query_response(text)
+    async def _ask(self, client, notebook_id, question, source_ids, conversation_id=None):
+        """Pregunta con el protocolo actual de la web (decisiones en web_chat.py).
+
+        Sin conversation_id: se manda None y el servidor continúa la conversación actual del
+        notebook; después se lee el id REAL con hPTbtc (teng-lin #659). Con conversation_id:
+        seguimiento explícito, con el historial de los turnos hechos en este proceso.
+        """
+        history = build_history(self._turns.get(conversation_id, [])) if conversation_id else None
+        inner = build_query_params(notebook_id=notebook_id, question=question,
+                                   source_ids=list(source_ids or []), history=history,
+                                   conversation_id=conversation_id)
+        parsed = parse_chat_stream(await self._post_query_streamed(client, inner))
+        is_follow_up = conversation_id is not None
+        if conversation_id is None:
+            raw = await self._rpc(client, "GET_LAST_CONVERSATION_ID",
+                                  [[], None, notebook_id, 1],
+                                  source_path=f"/notebook/{notebook_id}")
+            conversation_id = unwrap_last_conversation_id(raw)
+            if conversation_id is None:
+                # Hubo respuesta pero no se pudo leer el id: no se inventa uno (crearía
+                # turnos fantasma). Se devuelve la respuesta y se avisa.
+                parsed["warning"] = ("No se pudo leer el id de la conversación; la respuesta es "
+                                     "válida pero no podrás encadenar seguimientos con ella.")
+            else:
+                is_follow_up = bool(self._turns.get(conversation_id))
+        if conversation_id and parsed["answer"]:
+            self._turns.setdefault(conversation_id, []).append((question, parsed["answer"]))
+        refs = parsed["references"]
         return {
             "answer": parsed["answer"],
+            "references": refs,
+            "sources_used": list(dict.fromkeys(r["source_id"] for r in refs)),
             "conversation_id": conversation_id,
+            "is_follow_up": is_follow_up,
             "notebook_id": notebook_id,
+            **({"warning": parsed["warning"]} if "warning" in parsed else {}),
         }
 
     async def _post_query_streamed(self, client: httpx.AsyncClient, inner: Any) -> str:
-        self._reqid += 100000
-        query = {"bl": self._bl, "hl": self._hl, "_reqid": str(self._reqid), "rt": "c"}
-        if self._sid:
-            query["f.sid"] = self._sid
-        f_req = [None, json.dumps(inner)]
-        body = f"f.req={httpx.QueryParams({'x': json.dumps(f_req)})['x']}"
-        if self._csrf:
-            body += f"&at={httpx.QueryParams({'x': self._csrf})['x']}"
-        body += "&"
-        res = await client.post(
-            f"{self._base}{QUERY_ENDPOINT}",
-            params=query,
-            content=body,
-            headers={
+        def build() -> tuple[dict[str, str], str, dict[str, str]]:
+            self._reqid += 100000
+            query = {"bl": self._bl, "hl": self._hl, "_reqid": str(self._reqid), "rt": "c"}
+            if self._sid:
+                query["f.sid"] = self._sid
+            f_req = json.dumps([None, json.dumps(inner, separators=(",", ":"),
+                                                 ensure_ascii=False)],
+                               separators=(",", ":"), ensure_ascii=False)
+            body = f"f.req={quote(f_req, safe='')}"
+            if self._csrf:
+                body += f"&at={quote(self._csrf, safe='')}"
+            headers = {
                 "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
                 "Origin": self._base, "Referer": f"{self._base}/",
-                "X-Same-Domain": "1", "X-Goog-Csrf-Token": self._csrf,
-                "User-Agent": USER_AGENT, "Cookie": self._cookie,
-            },
-        )
+                "X-Same-Domain": "1", "User-Agent": USER_AGENT, "Cookie": self._cookie,
+            }
+            return query, body + "&", headers
+
+        query, body, headers = build()
+        res = await client.post(f"{self._base}{QUERY_ENDPOINT}", params=query, content=body,
+                                headers=headers)
         if res.status_code in (401, 403) or "accounts.google.com" in str(res.url):
             await self._bootstrap(client, force=True)
-            res = await client.post(
-                f"{self._base}{QUERY_ENDPOINT}", params=query, content=body,
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-                    "Origin": self._base, "Referer": f"{self._base}/",
-                    "X-Same-Domain": "1", "X-Goog-Csrf-Token": self._csrf,
-                    "User-Agent": USER_AGENT, "Cookie": self._cookie,
-                },
-            )
+            query, body, headers = build()        # el CSRF nuevo tiene que ir en el cuerpo
+            res = await client.post(f"{self._base}{QUERY_ENDPOINT}", params=query,
+                                    content=body, headers=headers)
         if res.status_code >= 400:
             raise TransportError(f"query endpoint HTTP {res.status_code}", retriable=False)
         return res.text

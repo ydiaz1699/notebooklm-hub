@@ -114,7 +114,7 @@ class FakeClient:
     async def get_notebook(self, nb_id):
         return next((n for n in be.parse_notebook_list(LIST_PAYLOAD) if n["id"] == nb_id), None)
 
-    async def ask(self, nb_id, question, source_ids=None):
+    async def ask(self, nb_id, question, source_ids=None, conversation_id=None):
         self.asked = (nb_id, question, source_ids)
         return {"answer": "ok", "conversation_id": "c", "notebook_id": nb_id}
 
@@ -240,10 +240,12 @@ def _run_transport(monkeypatch, operation, **params):
             return httpx.Response(200, text=HOME_HTML)
         if req.url.path == be.BATCH_ENDPOINT:
             rpc = req.url.params["rpcids"]
-            payload = LIST_PAYLOAD if rpc == "wXbhsf" else [LIST_PAYLOAD[0][0]]
+            payload = {"wXbhsf": LIST_PAYLOAD, "hPTbtc": [[["conv-real"]]]}.get(
+                rpc, [LIST_PAYLOAD[0][0]])
             return httpx.Response(200, text=_batch_response(rpc, payload))
         if req.url.path == be.QUERY_ENDPOINT:
-            inner = json.dumps(["wrb.fr", None, json.dumps([["respuesta fundamentada larga"]])])
+            answer_row = ["respuesta fundamentada larga", None, ["sess"], None, [0, 0, 0, None, 1]]
+            inner = json.dumps(["wrb.fr", None, json.dumps([answer_row, None, None, None, True])])
             return httpx.Response(200, text=")]}'\n" + f"[{inner}]")
         return httpx.Response(404)
 
@@ -279,11 +281,14 @@ def test_transport_ask_without_sources_fetches_them_first(monkeypatch):
     f_req = json.loads(parse_qs(query.content.decode())["f.req"][0])
     inner = json.loads(f_req[1])
     assert inner[0] == [[["s1"]], [["s2"]]] and inner[1] == "¿qué dice?"
+    assert inner[7] == ID_A and inner[4] is None            # 9 campos; sin UUID inventado
+    assert seen[3].url.params["rpcids"] == "hPTbtc"         # luego el id REAL
+    assert res.data["conversation_id"] == "conv-real"
 
 
 def test_transport_ask_with_explicit_sources_skips_lookup(monkeypatch):
     _, seen = _run_transport(monkeypatch, "ask", notebook_id=ID_A, question="q",
                              source_ids=["s2"])
-    assert [r.url.path for r in seen[1:]] == [be.QUERY_ENDPOINT]
+    assert [r.url.path for r in seen[1:]] == [be.QUERY_ENDPOINT, be.BATCH_ENDPOINT]
     inner = json.loads(json.loads(parse_qs(seen[1].content.decode())["f.req"][0])[1])
     assert inner[0] == [[["s2"]]]
