@@ -129,8 +129,8 @@ prompts** para quien quiera usarlas a mano.
 | Autoetiquetar | jacob-bd/teng-lin `agX4Bc` | ✅ `label_auto` (incremental) · `label_reorganize` (destructiva) |
 | Mover fuente a etiqueta | jacob-bd `core/labels.py:move_source_to_label`, teng-lin `le8sX` | ✅ `label_add_source` |
 | Añadir fuente de texto con título | jacob-bd `core/sources.py:add_text_source` | ✅ `source_add_text` (con reconciliación) |
-| Renombrar fuente | jacob-bd `core/sources.py:rename_source` | ❌ |
-| Personalizar chat (≤ 10 000 chars) | jacob-bd `configure_chat`, teng-lin `_send_configure` | ❌ |
+| Renombrar fuente | jacob-bd `core/sources.py:rename_source` | ✅ `source_rename` |
+| Personalizar chat (≤ 10 000 chars) **y leerla** | jacob-bd `configure_chat`, teng-lin `_send_configure`/`_read_settings` | ✅ `chat_configure` · `chat_settings_get` |
 | Deep Research | jacob-bd `core/research.py`, teng-lin `_research.py` | ❌ |
 
 Todas existen en los repos de referencia; antes de implementarlas se compararán los 7

@@ -46,6 +46,7 @@ from .web_labels import (
     build_list_labels_params,
     parse_label_set,
 )
+from .web_settings import build_configure_params, build_rename_source_params, parse_chat_settings
 from .web_sources import build_add_text_params, parse_added_source
 
 DEFAULT_HOST = "notebooklm.google.com"
@@ -74,6 +75,8 @@ _RPC_IDS = {
     "LIST_LABELS": "I3xc3c",                # solo lectura (teng-lin; jacob-bd no lo tiene)
     "CREATE_LABEL": "agX4Bc",               # autoetiquetado IA / crear
     "UPDATE_LABEL": "le8sX",                # renombrar / asignar fuente
+    "RENAME_NOTEBOOK": "s0tc2d",            # MutateProject: título y ajustes del chat
+    "UPDATE_SOURCE": "b7Wfje",              # MutateSource: renombrar fuente
 }
 
 # Códigos gRPC estándar que el backend pone en el índice 5 del envelope al rechazar.
@@ -294,7 +297,8 @@ class BatchExecuteTransport:
         self._ready = True
 
     _OPERATIONS = ("ask", "list_notebooks", "get_notebook", "list_labels", "generate_labels",
-                   "assign_source_to_label", "add_text_source")
+                   "assign_source_to_label", "add_text_source", "get_chat_settings",
+                   "configure_chat", "rename_source")
 
     async def call(self, operation: str, **params: Any) -> TransportResult:
         """Ejecuta una operación y devuelve datos ya parseados (ver _OPERATIONS)."""
@@ -304,7 +308,8 @@ class BatchExecuteTransport:
         async with httpx.AsyncClient(timeout=120) as client:
             await self._bootstrap(client)
             if operation in ("list_labels", "generate_labels", "assign_source_to_label",
-                             "add_text_source"):
+                             "add_text_source", "get_chat_settings", "configure_chat",
+                             "rename_source"):
                 data = await self._write_or_label_op(client, operation, **params)
                 return TransportResult(data=data, backend=self.name)
             if operation == "list_notebooks":
@@ -349,6 +354,24 @@ class BatchExecuteTransport:
                             build_assign_source_params(nb_id, p["label_id"], p["source_id"]),
                             source_path=path)
             return {"label_id": p["label_id"], "source_id": p["source_id"]}
+        if operation == "get_chat_settings":
+            payload = await self._rpc(client, "GET_NOTEBOOK", [nb_id, None, [2], None, 0],
+                                      source_path=path)
+            if not (isinstance(payload, list) and payload):
+                return None                               # notebook inexistente
+            return parse_chat_settings(payload[0])
+        if operation == "configure_chat":
+            await self._rpc(client, "RENAME_NOTEBOOK",
+                            build_configure_params(nb_id, goal=p["goal"],
+                                                   response_length=p["response_length"],
+                                                   custom_prompt=p.get("custom_prompt")),
+                            source_path=path)
+            return {"ok": True}
+        if operation == "rename_source":
+            await self._rpc(client, "UPDATE_SOURCE",
+                            build_rename_source_params(p["source_id"], p["title"]),
+                            source_path=path)
+            return {"source_id": p["source_id"], "title": p["title"]}
         # add_text_source
         title, content = p["title"], p["content"]
         try:
