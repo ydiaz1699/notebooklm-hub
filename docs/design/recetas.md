@@ -131,7 +131,7 @@ prompts** para quien quiera usarlas a mano.
 | Añadir fuente de texto con título | jacob-bd `core/sources.py:add_text_source` | ✅ `source_add_text` (con reconciliación) |
 | Renombrar fuente | jacob-bd `core/sources.py:rename_source` | ✅ `source_rename` |
 | Personalizar chat (≤ 10 000 chars) **y leerla** | jacob-bd `configure_chat`, teng-lin `_send_configure`/`_read_settings` | ✅ `chat_configure` · `chat_settings_get` |
-| Deep Research | jacob-bd `core/research.py`, teng-lin `_research.py` | ❌ |
+| Deep Research | jacob-bd `core/research.py`, teng-lin `_research.py` | ✅ `research_start` · `research_status` · `research_import` |
 
 Todas existen en los repos de referencia; antes de implementarlas se compararán los 7
 (regla del repo, `.kiro/steering/mejor-de-los-7.md`).

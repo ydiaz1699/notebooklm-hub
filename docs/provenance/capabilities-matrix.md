@@ -226,6 +226,23 @@ jacob-bd (`core/notebooks.py:configure_chat`, `core/sources.py:rename_source`).
 | Renombrar fuente | `UPDATE_SOURCE` (`b7Wfje`) `[None, [id], [[[título]]]]` | ambos coinciden | — |
 | Fuente inexistente al renombrar | Comprobar antes y releer después (el servidor no da error) | teng-lin (miss-detection por relectura) | jacob-bd: confía en el eco |
 
+**Investigación: Fast / Deep Research** (Fase A — 2026-10-29).
+Comparados: teng-lin (`_web/research.py`, `_web/rows/research.py`, `_web/rows/research_task.py`,
+`_types/research.py`), jacob-bd (`core/research.py`). roomi solo expone `research_sources`.
+
+| Detalle | Elegido | De | Descartado |
+|---|---|---|---|
+| Iniciar rápida / profunda | `Ljjv0c` `[[q,1],None,1,nb]` · `QA9ei` `[None,[1],[q,1],5,nb]`; profunda solo web | coinciden | — |
+| Sin `task_id` al iniciar | Error claro (no `None` silencioso) | teng-lin #1342 | — |
+| Estados | 1 en curso · 2/6 completada · 3 sin resultados · 4 cancelada · otro fallida · sin código = en curso | teng-lin | jacob-bd: 3 y 4 = "en curso" → esperaría para siempre |
+| Resultado | `[url, título, pista, tipo, _, _, [texto, tipo_contenido], _, ordinal]`; informe = url nula + contenido tipo 3; también forma `[título, md]` | teng-lin | — |
+| Importar web | `[None, None, [url, título], None×7, 2]` | teng-lin = jacob-bd | — |
+| Importar el informe | `[None, [título, md], None, 3, None×6, 3]` | teng-lin | jacob-bd: lo descarta |
+| Importación dudosa (3/9, corte) | Diferencia de IDs de fuentes antes/después; si no hay cambios → `UnconfirmedWriteError` | jacob-bd | — |
+| Tiempo de espera de la importación | 300 s | jacob-bd | — |
+| Reintentar sin duplicar | No reimportar resultados cuyo título ya es fuente (`skipped`) | propio (para el motor) | — |
+| No bloquear | `research_start` → `research_status` → `research_import` | teng-lin (patrón `*_start/*_status`) | — |
+
 **Pendiente (no implementado aún):** `authuser` para multi-cuenta (teng-lin), sugerencias de
 siguiente pregunta (`inner[5]`), número de turno vía `khqZz`, forzar conversación nueva
 (teng-lin: borrar la conversación; nunca inventar id), anclas de cita dentro del texto.
