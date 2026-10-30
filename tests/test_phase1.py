@@ -60,16 +60,23 @@ def test_build_ask_plan_validates():
     assert ok.notebook == "nb"
 
 
+_NB_ID = "11111111-2222-4333-8444-555555555555"
+
+
 class _FakeClient:
+    async def list_notebooks(self):
+        return [{"id": _NB_ID, "title": "mi-nb"}]
+
     async def ask(self, notebook_id, question, source_ids=None):
         return {"answer": "respuesta de prueba", "conversation_id": "c1", "notebook_id": notebook_id}
 
 
 def test_execute_ask_end_to_end_with_fake_client():
+    # Desde Fase 3 el nombre se resuelve a ID canónico antes de preguntar.
     plan = build_ask_plan(AskRequest(notebook="mi-nb", question="hola"))
     res = asyncio.run(execute_ask(plan, _FakeClient()))
     assert res.answer == "respuesta de prueba"
-    assert res.notebook_id == "mi-nb"
+    assert res.notebook_id == _NB_ID
 
 
 # ---- clasificación de errores ----
